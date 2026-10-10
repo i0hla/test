@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Komorebi X - Minimalist Downloader & Analyzer</title>
+<meta name="description" content="Komorebi: a calm, minimalist tool to look up X/Twitter profiles, inspect posts and download media with smart fallbacks. Arabic & English. No API key.">
+<meta name="theme-color" id="meta-theme" content="#161412">
+<meta property="og:title" content="Komorebi - Minimalist X Downloader & Analyzer">
+<meta property="og:description" content="Look up profiles, inspect posts and download media. Calm, fast, no API key.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231C1917'/%3E%3Cpath d='M22 46V18M44 18L27 33l17 13' stroke='%23E7E2D8' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+/* Apply saved theme / language before first paint (no flash) */
+(function () {
+  try {
+    var d = document.documentElement;
+    var th = localStorage.getItem('frame_theme');
+    if (!th) th = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    d.setAttribute('data-theme', th);
+    var lg = localStorage.getItem('frame_lang');
+    if (!lg) lg = (navigator.language || 'en').toLowerCase().indexOf('ar') === 0 ? 'ar' : 'en';
+    d.lang = lg; d.dir = lg === 'ar' ? 'rtl' : 'ltr';
+  } catch (e) {}
+})();
+</script>
+<style>
+:root {
+  color-scheme: dark;
+  --bg:#161412; --bg2:#1F1C19;
+  --surface:rgba(36,32,29,.62); --surface2:rgba(46,41,36,.9);
+  --line:#342E29; --line2:#4A423B;
+  --text:#F0EAE1; --muted:#ACA399; --faint:#7D766E;
+  --a1-rgb:184 160 138; --a2-rgb:214 190 160; --st-rgb:172 163 153;
+  --a1:rgb(var(--a1-rgb)); --a2:rgb(var(--a2-rgb)); --grad:linear-gradient(120deg,var(--a1),var(--a2));
+  --btn-hover:#E2D9CC; --on-accent:var(--bg); --ok:#9DB896; --err:#E8958C;
+  --hole:rgba(255,255,255,.07); --shadow:0 40px 90px -45px rgba(0,0,0,.9);
+  --beam:rgba(200,175,145,.15); --grain:.06;
+  --silk-1:128,108,92; --silk-2:176,152,130; --silk-3:206,192,176; --silk-hi:244,238,229; --silk-hi2:206,176,146;
+  --f-display:Georgia,'IBM Plex Sans Arabic','Times New Roman',serif;
+  --f-body:system-ui,-apple-system,'Segoe UI',Roboto,'IBM Plex Sans Arabic',sans-serif;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg:#FAF8F5; --bg2:#F4EFE6;
+  --surface:rgba(255,255,255,.74); --surface2:#FFFDFB;
+  --line:#E7E2D8; --line2:#D6CEBF;
+  --text:#1C1917; --muted:#605C58; --faint:#A8A29E;
+  --a1-rgb:140 122 107; --a2-rgb:200 177 149; --st-rgb:96 92 88;
+  --btn-hover:#3F3A36; --ok:#6F8F68; --err:#B5483E;
+  --hole:rgba(60,45,30,.08); --shadow:0 40px 80px -48px rgba(90,70,50,.35);
+  --beam:rgba(170,140,110,.2); --grain:.05;
+  --silk-1:196,170,140; --silk-2:140,122,107; --silk-3:120,112,104; --silk-hi:28,25,23; --silk-hi2:140,122,107;
+}
+:root[lang="ar"] { --f-display:'IBM Plex Sans Arabic',Georgia,serif; --f-body:'IBM Plex Sans Arabic',system-ui,sans-serif; }
+
+*,*::before,*::after { box-sizing:border-box; }
+html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
+body {
+  margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+  font-family:var(--f-body); font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  transition:background-color .4s, color .4s;
+}
+button { font:inherit; color:inherit; cursor:pointer; border:0; background:none; padding:0; }
+a { color:inherit; }
+img,video { display:block; max-width:100%; }
+bdi { unicode-bidi:isolate; }
+::selection { background:rgb(var(--a1-rgb) / .35); }
+:focus-visible { outline:2px solid var(--a1); outline-offset:3px; border-radius:10px; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ---------- Ambient background ---------- */
+.bg { position:fixed; inset:0; z-index:-2; overflow:hidden; pointer-events:none; }
+.bg::before { /* cursor spotlight */
+  content:""; position:absolute; inset:0;
+  background:radial-gradient(520px circle at var(--mx,50%) var(--my,25%), rgb(var(--a1-rgb) / .12), transparent 65%);
+  transition:background .2s;
+}
+.blob { position:absolute; border-radius:50%; filter:blur(90px); opacity:.5; animation:drift 26s ease-in-out infinite alternate; }
+.blob.b1 { width:46vw; height:46vw; left:-12vw; top:-14vw; background:radial-gradient(circle,rgb(var(--a1-rgb) / .28),transparent 65%); }
+.blob.b2 { width:40vw; height:40vw; right:-10vw; top:18vh; background:radial-gradient(circle,rgb(var(--a2-rgb) / .16),transparent 65%); animation-delay:-9s; }
+.blob.b3 { width:36vw; height:36vw; left:20vw; bottom:-18vw; background:radial-gradient(circle,rgb(var(--st-rgb) / .14),transparent 65%); animation-delay:-16s; }
+:root[data-theme="light"] .blob { opacity:.35; }
+@keyframes drift { from { transform:translate3d(0,0,0) scale(1); } to { transform:translate3d(6vw,4vh,0) scale(1.15); } }
+.beam { /* projector light */
+  position:absolute; top:-30vh; left:50%; width:90vw; height:100vh; margin-left:-45vw; transform-origin:50% 0;
+  background:conic-gradient(from 180deg at 50% 0%, transparent 38%, var(--beam) 50%, transparent 62%);
+  filter:blur(26px); -webkit-mask-image:linear-gradient(#000,transparent 80%); mask-image:linear-gradient(#000,transparent 80%);
+  animation:sway 14s ease-in-out infinite alternate;
+}
+@keyframes sway { from { transform:rotate(-3deg); } to { transform:rotate(3deg); } }
+.grain {
+  position:absolute; inset:0; opacity:var(--grain); mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Layout ---------- */
+.wrap { width:min(1080px,100% - 32px); margin-inline:auto; }
+.top-ctrls { position:fixed; top:14px; inset-inline-end:14px; z-index:40; }
+.logo { display:flex; align-items:center; gap:10px; font-family:var(--f-display); font-weight:700; font-size:20px; letter-spacing:-.02em; text-decoration:none; }
+.logo svg { width:30px; height:30px; }
+.ctrls { display:flex; gap:8px; }
+.chipbtn {
+  height:40px; min-width:40px; padding:0 14px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  background:var(--surface); border:1px solid var(--line); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  font-size:13px; font-weight:600; transition:border-color .25s, transform .25s, background .25s;
+}
+.chipbtn:hover { border-color:var(--a1); transform:translateY(-2px); }
+.chipbtn svg { width:18px; height:18px; }
+.ico-sun { display:none; } :root[data-theme="dark"] .ico-sun { display:block; } :root[data-theme="dark"] .ico-moon { display:none; }
+
+/* ---------- Hero ---------- */
+.hero { text-align:center; padding:clamp(18px,4vh,40px) 0 28px; }
+.eyebrow {
+  display:inline-flex; align-items:center; gap:10px; padding:7px 14px; border-radius:999px; font-size:12px; font-weight:600;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--muted); background:var(--surface); border:1px solid var(--line);
+}
+:root[lang="ar"] .eyebrow { letter-spacing:0; text-transform:none; font-size:13px; }
+.rec { width:8px; height:8px; border-radius:50%; background:var(--a1); box-shadow:0 0 0 0 rgb(var(--a1-rgb) / .6); animation:rec 1.8s infinite; }
+@keyframes rec { 0% { box-shadow:0 0 0 0 rgb(var(--a1-rgb) / .55); } 70%,100% { box-shadow:0 0 0 10px rgb(var(--a1-rgb) / 0); } }
+h1 {
+  display:flex; direction:ltr; align-items:center; justify-content:center; margin:20px 0 12px;
+  font-family:var(--f-display); font-weight:800; font-size:clamp(2.6rem,7vw,4.4rem); line-height:1.08; letter-spacing:-.02em;
+}
+h1 svg { width:.78em; height:.78em; fill:var(--a1); margin-inline-start:.22em; flex:none; }
+.title-grad { color:var(--text); }
+:root[lang="ar"] h1 { letter-spacing:0; }
+.sub { max-width:540px; margin:0 auto 34px; color:var(--muted); font-size:clamp(15px,2.1vw,17.5px); }
+
+/* Viewfinder command bar */
+.vf { position:relative; width:min(740px,100%); margin-inline:auto; padding:12px; }
+.vf > i { position:absolute; width:22px; height:22px; border:2px solid var(--a1); opacity:.4; --d:0px; transition:transform .6s cubic-bezier(.16,1,.3,1), opacity .4s; }
+.vf > i:nth-child(1) { top:0; left:0; border-right:0; border-bottom:0; border-top-left-radius:9px; transform:translate(var(--d),var(--d)); }
+.vf > i:nth-child(2) { top:0; right:0; border-left:0; border-bottom:0; border-top-right-radius:9px; transform:translate(calc(var(--d) * -1),var(--d)); }
+.vf > i:nth-child(3) { bottom:0; left:0; border-right:0; border-top:0; border-bottom-left-radius:9px; transform:translate(var(--d),calc(var(--d) * -1)); }
+.vf > i:nth-child(4) { bottom:0; right:0; border-left:0; border-top:0; border-bottom-right-radius:9px; transform:translate(calc(var(--d) * -1),calc(var(--d) * -1)); }
+.vf:focus-within > i, .vf.busy > i { opacity:1; --d:5px; }
+.vf.busy > i { animation:lock 1s ease-in-out infinite alternate; }
+.vf.locked > i { animation:lockok .7s ease; }
+@keyframes lock { to { --d:1px; opacity:.55; } }
+@keyframes lockok { 0% { transform:scale(1.5); opacity:.2; } 100% { opacity:1; } }
+.bar {
+  position:relative; display:flex; align-items:center; gap:6px; padding:8px; border-radius:20px;
+  background:var(--surface); border:1px solid var(--line); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  box-shadow:var(--shadow); transition:border-color .3s, box-shadow .3s;
+}
+.vf:focus-within .bar { border-color:var(--a1); box-shadow:var(--shadow), 0 0 0 5px rgb(var(--a1-rgb) / .13); }
+.bar .lead { width:20px; height:20px; margin-inline:12px 4px; color:var(--faint); flex:none; }
+.bar input {
+  flex:1; min-width:0; height:50px; background:none; border:0; outline:0; color:var(--text); font:inherit; font-size:16px;
+}
+.bar input::placeholder { color:var(--faint); }
+.mini { height:36px; padding:0 12px; border-radius:12px; font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:6px; color:var(--muted); background:var(--surface); border:1px solid var(--line); transition:color .2s, border-color .2s; flex:none; }
+.mini:hover { color:var(--text); border-color:var(--a1); }
+.mini svg { width:15px; height:15px; }
+.mini[hidden], .x[hidden] { display:none; }
+.x { width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:var(--faint); flex:none; }
+.x:hover { color:var(--text); background:var(--surface2); }
+.x svg { width:16px; height:16px; }
+.primary {
+  position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; gap:10px; height:50px; padding:0 24px; border-radius:14px;
+  background:var(--text); color:var(--bg); font-weight:700; font-size:15px; letter-spacing:.01em; flex:none;
+  box-shadow:0 12px 28px -14px rgb(var(--a1-rgb) / .8); transition:transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s, filter .25s;
+}
+.primary:hover:not(:disabled) { background:var(--btn-hover); box-shadow:0 16px 34px -14px rgb(var(--a1-rgb) / .9); }
+.primary:active:not(:disabled) { transform:scale(.97) !important; }
+.primary:disabled { cursor:progress; filter:saturate(.7); }
+.primary svg { width:18px; height:18px; flex:none; }
+:root[dir="rtl"] .primary .arr { transform:scaleX(-1); }
+.spin { animation:spin .8s linear infinite; } @keyframes spin { to { transform:rotate(360deg); } }
+.tryrow { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px; margin-top:18px; font-size:13px; color:var(--faint); }
+.tryrow button { padding:6px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--line); color:var(--muted); font-size:12.5px; transition:.2s; }
+.tryrow button:hover { color:var(--text); border-color:var(--a1); transform:translateY(-1px); }
+.hint { margin-top:14px; font-size:12.5px; color:var(--faint); }
+kbd { font-family:inherit; font-size:11px; padding:2px 7px; border-radius:7px; border:1px solid var(--line2); background:var(--surface); color:var(--muted); }
+
+/* ---------- Status ---------- */
+.status { margin:6px 0 0; }
+.errbox { display:flex; gap:14px; align-items:flex-start; padding:16px 18px; border-radius:18px; background:rgba(255,100,90,.08); border:1px solid rgba(255,120,110,.3); animation:rise .5s cubic-bezier(.16,1,.3,1) both; max-width:740px; margin:0 auto; }
+.errbox svg { width:22px; height:22px; color:var(--err); flex:none; margin-top:2px; }
+.errbox p { margin:0; color:var(--text); font-size:14.5px; }
+.errbox .row { margin-top:10px; display:flex; gap:10px; }
+.errbox .row button { font-size:12.5px; font-weight:600; color:var(--muted); padding:5px 12px; border-radius:10px; border:1px solid var(--line); }
+.errbox .row button:hover { color:var(--text); border-color:var(--a1); }
+
+.skel { border-radius:28px; padding:clamp(16px,3vw,28px); background:var(--surface); border:1px solid var(--line); display:grid; grid-template-columns:minmax(0,1.5fr) minmax(240px,1fr); gap:22px; }
+.skel .s { border-radius:16px; background:linear-gradient(100deg,var(--surface) 30%,var(--surface2) 50%,var(--surface) 70%) 120% 0/220% 100%; animation:shim 1.5s linear infinite; }
+.skel .a { aspect-ratio:16/10; } .skel .b { display:grid; gap:12px; align-content:start; } .skel .b .s { height:46px; } .skel .b .s:first-child { height:24px; width:60%; }
+@keyframes shim { to { background-position:-120% 0; } }
+@media (max-width:760px) { .skel { grid-template-columns:1fr; } }
+
+/* ---------- Theater (post / media) ---------- */
+@keyframes rise { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+.theater {
+  position:relative; overflow:hidden; border-radius:28px; padding:clamp(18px,3vw,30px);
+  background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  animation:rise .7s cubic-bezier(.16,1,.3,1) both;
+}
+.author { display:flex; align-items:center; gap:12px; margin:0 0 14px; }
+button.author { width:fit-content; max-width:100%; padding:6px 16px 6px 6px; border-radius:18px; text-align:start; transition:background .25s, transform .25s; }
+:root[dir="rtl"] button.author { padding:6px 6px 6px 16px; }
+button.author:hover { background:var(--surface2); transform:translateY(-1px); }
+button.author:hover .who b { text-decoration:underline; text-decoration-color:rgb(var(--a1-rgb) / .6); text-underline-offset:4px; }
+button.author .go { width:16px; height:16px; color:var(--faint); flex:none; margin-inline-start:2px; transition:transform .25s, color .25s; }
+button.author:hover .go { color:var(--a1); transform:translateX(3px); }
+:root[dir="rtl"] button.author:hover .go { transform:translateX(-3px) scaleX(-1); } :root[dir="rtl"] button.author .go { transform:scaleX(-1); }
+.avatar { width:46px; height:46px; border-radius:50%; object-fit:cover; border:2px solid var(--line2); background:var(--surface2); flex:none; }
+.who { min-width:0; flex:1; }
+.who b { display:flex; align-items:center; gap:6px; font-family:var(--f-display); font-size:16px; line-height:1.2; }
+.who span { display:block; font-size:13px; color:var(--faint); }
+.ttext { margin:0 0 20px; font-size:clamp(16px,2.2vw,19px); line-height:1.65; white-space:pre-wrap; word-break:break-word; }
+.ttext a { color:var(--a2); text-decoration:none; border-bottom:1px solid rgb(var(--a2-rgb) / .4); }
+.stage { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(250px,1fr); gap:24px; align-items:start; }
+@media (max-width:820px) { .stage { grid-template-columns:1fr; } }
+.vwrap { position:relative; }
+.glow { position:absolute; inset:-5%; background-size:cover; background-position:center; filter:blur(46px) saturate(1.9); opacity:.5; z-index:0; border-radius:30px; transition:background-image .4s; }
+.viewer { position:relative; z-index:1; border-radius:20px; overflow:hidden; background:#000; aspect-ratio:16/10; max-height:72vh; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); }
+.viewer video,.viewer img { width:100%; height:100%; object-fit:contain; background:#000; }
+.tag { position:absolute; z-index:2; top:12px; inset-inline-start:12px; display:flex; gap:6px; }
+.tag span { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:4px 9px; border-radius:8px; background:rgba(0,0,0,.6); color:#fff; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); font-variant-numeric:tabular-nums; }
+.panel { display:flex; flex-direction:column; gap:16px; }
+.meta { display:flex; flex-wrap:wrap; gap:8px; }
+.pill { font-size:12px; font-weight:600; padding:5px 11px; border-radius:999px; background:var(--surface2); border:1px solid var(--line); color:var(--muted); font-variant-numeric:tabular-nums; }
+.pill.hot { color:var(--bg); background:var(--a1); border-color:transparent; }
+.lbl { font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:0 0 8px; }
+:root[lang="ar"] .lbl { letter-spacing:0; text-transform:none; font-size:13px; }
+.qs { display:flex; flex-wrap:wrap; gap:8px; }
+.q { display:flex; flex-direction:column; align-items:flex-start; gap:1px; padding:9px 14px; min-width:84px; border-radius:14px; background:var(--surface); border:1px solid var(--line); text-align:start; transition:.2s; }
+.q b { font-family:var(--f-display); font-size:15px; font-weight:600; }
+.q small { font-size:11.5px; color:var(--faint); }
+.q:hover { border-color:var(--line2); transform:translateY(-1px); }
+.q.on { border-color:var(--a1); background:rgb(var(--a1-rgb) / .1); box-shadow:inset 0 0 0 1px var(--a1); }
+.dl::before { content:""; position:absolute; inset:0; background:rgb(var(--a1-rgb) / .55); transform:scaleX(var(--p,0)); transform-origin:left; transition:transform .25s; }
+:root[dir="rtl"] .dl::before { transform-origin:right; }
+.dl { width:100%; height:56px; font-size:16px; border-radius:16px; }
+.dl > * { position:relative; }
+.dl.done { color:#1C1917; background:linear-gradient(120deg,#9DB896,#C4D6BC); box-shadow:0 12px 30px -12px rgb(var(--a1-rgb) / .5); }
+.sec { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.sec button, .sec a { display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 6px; border-radius:14px; background:var(--surface); border:1px solid var(--line); font-size:12px; font-weight:600; color:var(--muted); text-decoration:none; text-align:center; transition:.2s; }
+.sec button:hover, .sec a:hover { color:var(--text); border-color:var(--a1); transform:translateY(-2px); }
+.sec svg { width:18px; height:18px; }
+.note { font-size:12.5px; color:var(--faint); min-height:18px; margin:-6px 0 0; }
+.note.err { color:var(--err); }
+.stats { display:flex; flex-wrap:wrap; gap:18px; margin-top:22px; padding-top:18px; border-top:1px dashed var(--line2); font-size:13.5px; color:var(--muted); }
+.stats span { display:inline-flex; align-items:center; gap:7px; font-variant-numeric:tabular-nums; }
+.stats svg { width:16px; height:16px; color:var(--a1); }
+.stats .when { margin-inline-start:auto; color:var(--faint); }
+.empty { padding:26px; border-radius:18px; border:1px dashed var(--line2); text-align:center; color:var(--muted); }
+
+/* film reel thumbnails */
+.reel { display:flex; gap:12px; margin-top:18px; overflow-x:auto; padding:14px 2px 10px; scrollbar-width:thin; }
+.th { position:relative; flex:none; width:104px; height:68px; border-radius:10px; overflow:hidden; border:2px solid var(--line); background:#000; transition:.25s; }
+.th img { width:100%; height:100%; object-fit:cover; opacity:.75; transition:.25s; }
+.th::before,.th::after { content:""; position:absolute; left:0; right:0; height:6px; z-index:2; background:repeating-linear-gradient(90deg,rgba(255,255,255,.55) 0 5px,transparent 5px 11px); opacity:.5; }
+.th::before { top:2px; } .th::after { bottom:2px; }
+.th em { position:absolute; z-index:3; bottom:10px; inset-inline-start:7px; font-style:normal; font-size:10px; font-weight:700; color:#fff; text-shadow:0 1px 6px #000; }
+.th.on { border-color:var(--a1); transform:translateY(-3px); } .th.on img { opacity:1; }
+.th:hover img { opacity:1; }
+.allbtn { margin-top:6px; }
+
+/* ---------- Profile ---------- */
+.prof { padding:0; }
+.banner { height:clamp(130px,22vw,220px); background:linear-gradient(120deg,rgb(var(--a1-rgb) / .35),rgb(var(--a2-rgb) / .22)); position:relative; overflow:hidden; }
+.banner img { width:100%; height:100%; object-fit:cover; }
+.banner::after { content:""; position:absolute; inset:0; background:linear-gradient(transparent 55%,rgba(0,0,0,.35)); }
+.pbody { padding:0 clamp(18px,3vw,30px) clamp(18px,3vw,30px); }
+.phead { display:flex; align-items:flex-end; gap:16px; margin-top:-46px; position:relative; z-index:2; flex-wrap:wrap; }
+.pav { width:96px; height:96px; border-radius:50%; object-fit:cover; border:4px solid var(--bg); background:var(--surface2); box-shadow:0 10px 30px -10px #000; }
+.pav.biz { border-radius:24px; }
+.pname { padding-bottom:6px; min-width:0; flex:1; }
+.pname b { display:flex; align-items:center; gap:7px; font-family:var(--f-display); font-size:clamp(20px,3vw,26px); line-height:1.2; }
+.pname span { color:var(--faint); font-size:14px; }
+.bio { margin:16px 0 4px; font-size:15.5px; color:var(--text); white-space:pre-wrap; word-break:break-word; max-width:70ch; }
+.facts { display:flex; flex-wrap:wrap; gap:14px; margin:10px 0 0; font-size:13px; color:var(--faint); }
+.facts a { color:var(--a2); text-decoration:none; }
+.grid4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin:22px 0; }
+.stat { padding:16px; border-radius:18px; background:var(--surface); border:1px solid var(--line); }
+.stat b { display:block; font-family:var(--f-display); font-size:clamp(22px,3.4vw,30px); letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.stat span { font-size:12.5px; color:var(--faint); }
+.pacts { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+.pacts button, .pacts a { display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border-radius:14px; background:var(--surface); border:1px solid var(--line); font-size:13px; font-weight:600; color:var(--muted); text-decoration:none; position:relative; overflow:hidden; transition:.2s; }
+.pacts button:hover, .pacts a:hover { color:var(--text); border-color:var(--a1); transform:translateY(-2px); }
+.pacts button[disabled] { opacity:.45; pointer-events:none; }
+.pacts svg { width:17px; height:17px; }
+
+/* ---------- Sections ---------- */
+section.block { margin-top:44px; }
+.sechead { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sechead h2 { margin:0; font-family:var(--f-display); font-size:13px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); }
+:root[lang="ar"] .sechead h2 { letter-spacing:0; text-transform:none; font-size:15px; }
+.linkbtn { font-size:12.5px; font-weight:600; color:var(--faint); } .linkbtn:hover { color:var(--err); }
+.hist { display:flex; flex-wrap:wrap; gap:8px; }
+.hi { display:inline-flex; align-items:center; gap:8px; padding:8px 8px 8px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:13px; color:var(--muted); transition:.2s; max-width:100%; }
+:root[dir="rtl"] .hi { padding:8px 14px 8px 8px; }
+.hi:hover { border-color:var(--a1); color:var(--text); }
+.hi .t { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--a1); }
+.hi .lab { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; }
+.hi .rm { width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:var(--faint); } .hi .rm:hover { background:var(--surface2); color:var(--text); }
+.hi .rm svg { width:12px; height:12px; }
+
+.steps { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+@media (max-width:760px) { .steps { grid-template-columns:1fr; } }
+.step { position:relative; padding:22px; border-radius:22px; background:var(--surface); border:1px solid var(--line); overflow:hidden; transition:.3s; }
+.step:hover { border-color:var(--line2); transform:translateY(-3px); }
+.step .n { font-family:var(--f-display); font-size:54px; font-weight:700; line-height:1; color:transparent; -webkit-text-stroke:1.5px var(--line2); letter-spacing:-.04em; }
+.step h3 { margin:14px 0 6px; font-family:var(--f-display); font-size:17px; }
+.step p { margin:0; color:var(--muted); font-size:14px; }
+
+/* ---------- Footer / credit ---------- */
+footer { margin-top:70px; padding:34px 0 46px; text-align:center; position:relative; }
+footer::before { content:""; position:absolute; top:0; left:50%; width:70px; height:1px; transform:translateX(-50%); background:linear-gradient(90deg,transparent,var(--faint),transparent); }
+.dlabel { font-size:11px; letter-spacing:.3em; text-transform:uppercase; color:var(--faint); font-weight:600; }
+.dlabel b { color:var(--text); letter-spacing:.3em; }
+:root[lang="ar"] .dlabel, :root[lang="ar"] .dlabel b { letter-spacing:.08em; }
+.dlinks { direction:ltr; display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:14px; }
+.dlinks a { display:inline-flex; align-items:center; gap:10px; padding:9px 16px 9px 12px; border-radius:999px; background:var(--surface); border:1px solid var(--line); text-decoration:none; font-size:13px; font-weight:600; transition:.25s; direction:ltr; }
+.dlinks a:hover { border-color:var(--a1); transform:translateY(-3px); box-shadow:0 12px 26px -14px rgb(var(--a1-rgb) / .6); }
+.dlinks svg { width:18px; height:18px; fill:var(--a1); }
+.dlinks small { color:var(--faint); font-size:10.5px; letter-spacing:.12em; margin-inline-end:4px; }
+.fine { margin-top:22px; font-size:12px; color:var(--faint); }
+
+/* ---------- Trim & Save modal ---------- */
+#trim-modal { position:fixed; inset:0; z-index:70; display:none; align-items:center; justify-content:center; padding:16px; overflow-y:auto; background:rgba(12,10,9,.7); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+#trim-modal.open { display:flex; }
+.tcard { width:min(680px,100%); margin:auto; padding:clamp(18px,3vw,26px); border-radius:26px; background:var(--bg); border:1px solid var(--line2); box-shadow:0 40px 90px -30px rgba(0,0,0,.7); display:grid; gap:16px; animation:rise .45s cubic-bezier(.16,1,.3,1) both; }
+.thead { display:flex; justify-content:space-between; align-items:flex-start; }
+.thead small { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--a1); }
+:root[lang="ar"] .thead small { letter-spacing:0; text-transform:none; font-size:13px; }
+.thead h4 { margin:4px 0 0; font-family:var(--f-display); font-size:22px; }
+.tclose { width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:var(--faint); transition:.2s; }
+.tclose:hover { color:var(--text); background:var(--surface2); } .tclose svg { width:20px; height:20px; }
+.tloading { padding:34px 0; text-align:center; }
+.tloading p { margin:0 0 12px; color:var(--muted); font-size:14px; }
+.bar2 { height:8px; max-width:320px; margin-inline:auto; background:var(--line); border-radius:999px; overflow:hidden; }
+.bar2 > div { height:100%; width:0; background:var(--a1); transition:width .25s; }
+.terr { padding:14px 16px; border-radius:14px; background:rgb(181 72 62 / .1); border:1px solid rgb(181 72 62 / .35); color:var(--err); font-size:14px; }
+.tvid { background:#000; border-radius:18px; overflow:hidden; } .tvid video { width:100%; max-height:320px; object-fit:contain; background:#000; }
+.ttrack { position:relative; height:48px; margin:8px 10px 0; background:var(--line); border-radius:14px; touch-action:none; cursor:pointer; user-select:none; direction:ltr; }
+.trange { position:absolute; top:0; bottom:0; background:rgb(var(--a1-rgb) / .35); border-block:2px solid var(--a1); }
+.tplay { position:absolute; top:0; bottom:0; width:2px; background:var(--text); pointer-events:none; }
+.thandle { position:absolute; top:-4px; bottom:-4px; width:16px; margin-left:-8px; background:var(--text); border-radius:8px; cursor:ew-resize; touch-action:none; display:flex; align-items:center; justify-content:center; }
+.thandle i { width:2px; height:20px; background:var(--bg); border-radius:2px; }
+.tlabels { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center; }
+.tlabels div { padding:10px; border-radius:14px; background:var(--surface); border:1px solid var(--line); }
+.tlabels small { display:block; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); }
+:root[lang="ar"] .tlabels small { letter-spacing:0; text-transform:none; font-size:12px; }
+.tlabels b { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:15px; }
+.tbtns { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+@media (max-width:560px) { .tbtns { grid-template-columns:repeat(2,1fr); } }
+.tbtns button { padding:11px 6px; border-radius:14px; background:var(--surface); border:1px solid var(--line); font-size:12.5px; font-weight:600; color:var(--muted); transition:.2s; }
+.tbtns button:hover { color:var(--text); border-color:var(--a1); }
+.tnote { margin:0; text-align:center; font-size:12px; color:var(--faint); line-height:1.6; }
+.btn2 { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; height:46px; border-radius:14px; background:var(--surface2); border:1px solid var(--line2); font-weight:700; font-size:14px; color:var(--text); transition:.2s; }
+.btn2:hover { border-color:var(--a1); transform:translateY(-1px); } .btn2 svg { width:17px; height:17px; }
+
+/* ---------- Toast ---------- */
+#toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:80; transform:translate(-50%,30px); opacity:0; pointer-events:none; padding:12px 20px; border-radius:14px; background:var(--text); color:var(--bg); font-size:14px; font-weight:600; box-shadow:0 20px 40px -16px rgba(0,0,0,.6); transition:.4s cubic-bezier(.16,1,.3,1); max-width:90vw; text-align:center; }
+#toast.show { transform:translate(-50%,0); opacity:1; }
+
+.hidden { display:none !important; }
+@media (hover:none) { .kh { display:none; } }
+@media (max-width:560px) {
+  .bar { padding:6px; } .primary { padding:0 16px; } .primary .txt { display:none; }
+  .mini span { display:none; } .mini { padding:0 10px; }
+  .sec { grid-template-columns:repeat(3,1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="beam"></div><div class="grain"></div></div>
+
+<div id="wave-hero" style="position:relative;overflow:hidden;width:100%;height:clamp(110px,15vw,160px)" aria-hidden="true"><canvas id="aurora-canvas" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas></div>
+<div class="top-ctrls">
+    <div class="ctrls">
+      <button class="chipbtn" id="lang-btn" type="button" aria-label="Language">العربية</button>
+      <button class="chipbtn" id="theme-btn" type="button" aria-label="Toggle theme">
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+      </button>
+    </div>
+</div>
+
+<div class="wrap">
+
+
+  <main>
+    <section class="hero">
+      <span class="eyebrow"><i class="rec"></i><span data-i18n="eyebrow">Minimalist Engine</span></span>
+      <h1><span class="title-grad">Komorebi</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-10.916 12.48L23.4 22.25h-6.656l-5.214-6.817L4.99 22.25H1.68l11.73-13.41L1.69 2.25h6.82l4.7 6.37L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg></h1>
+      <p class="sub" data-i18n="sub">A serene, raw-crafted tool to query X/Twitter profiles, analyze metadata, and download media seamlessly through smart fallbacks.</p>
+
+      <div class="vf" id="vf">
+        <i></i><i></i><i></i><i></i>
+        <div class="bar">
+          <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="q" dir="auto" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-ph="ph" placeholder="x.com/user/status/… or @username" aria-label="Link">
+          <button class="mini" id="paste" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/></svg>
+            <span data-i18n="paste">Paste</span>
+          </button>
+          <button class="x" id="clear" type="button" hidden aria-label="Clear">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <button class="primary" id="go" type="button">
+            <span class="txt" data-i18n="go">Fetch</span>
+            <svg class="arr" id="go-arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg class="spin hidden" id="go-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M21 12a9 9 0 11-6.2-8.55" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="tryrow">
+        <span data-i18n="try">Try</span>
+        <button type="button" data-fill="@NASA" dir="ltr">@NASA</button>
+        <button type="button" data-fill="https://x.com/jack/status/20" dir="ltr">x.com/jack/status/20</button>
+ 
+    </section>
+
+    <div class="status" id="status" aria-live="polite"></div>
+    <div id="result"></div>
+
+    <section class="block hidden" id="hist-block">
+      <div class="sechead"><h2 data-i18n="recent">Recent</h2><button class="linkbtn" id="hist-clear" type="button" data-i18n="clear">Clear</button></div>
+      <div class="hist" id="hist"></div>
+    </section>
+
+    <section class="block">
+      <div class="sechead"><h2 data-i18n="how">How it works</h2></div>
+      <div class="steps">
+        <div class="step"><div class="n">01</div><h3 data-i18n="s1t">Copy the link</h3><p data-i18n="s1d">Tap Share on any X post and copy its link.</p></div>
+        <div class="step"><div class="n">02</div><h3 data-i18n="s2t">Paste it here</h3><p data-i18n="s2d">Drop it in the bar above, or just paste anywhere on this page.</p></div>
+        <div class="step"><div class="n">03</div><h3 data-i18n="s3t">Pick & download</h3><p data-i18n="s3d">Preview the video, choose a quality and save it to your device.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="dlabel"><span data-i18n="devby">Developed by</span> <b>Asad</b></div>
+    <div class="dlinks">
+      <a href="https://www.instagram.com/eukc" target="_blank" rel="noopener noreferrer" aria-label="Instagram @eukc">
+        <svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.8.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-3.3-.1-4.8-1.7-4.9-4.9C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8C2.4 3.9 4 2.4 7.2 2.3 8.4 2.2 8.8 2.2 12 2.2zM12 0C8.7 0 8.3 0 7.1.1 2.7.3.3 2.7.1 7.1 0 8.3 0 8.7 0 12s0 3.7.1 4.9c.2 4.4 2.6 6.8 7 7C8.3 24 8.7 24 12 24s3.7 0 4.9-.1c4.4-.2 6.8-2.6 7-7 .1-1.2.1-1.6.1-4.9s0-3.7-.1-4.9c-.2-4.4-2.6-6.8-7-7C15.7 0 15.3 0 12 0zm0 5.8a6.2 6.2 0 100 12.4 6.2 6.2 0 000-12.4zM12 16a4 4 0 110-8 4 4 0 010 8zm6.4-11.8a1.4 1.4 0 100 2.9 1.4 1.4 0 000-2.9z"/></svg>
+        <span><small>INSTAGRAM</small>@eukc</span>
+      </a>
+      <a href="https://x.com/Asad3mr" target="_blank" rel="noopener noreferrer" aria-label="X @Asad3mr">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.25H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        <span><small>X</small>@Asad3mr</span>
+      </a>
+    </div>
+    <p class="fine"><span data-i18n="fine">Powered by FixTweet and public proxies. No API key. Nothing is stored on a server.</span></p>
+  </footer>
+</div>
+
+<!-- Trim & Save editor -->
+<div id="trim-modal" role="dialog" aria-modal="true" aria-labelledby="tr-title">
+  <div class="tcard">
+    <div class="thead">
+      <div><small data-i18n="editorLbl">Video Editor</small><h4 id="tr-title" data-i18n="trimTitle">Trim & Save</h4></div>
+      <button class="tclose" id="tr-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="tloading" id="tr-loading"><p id="tr-loading-text">…</p><div class="bar2"><div id="tr-load-bar"></div></div></div>
+    <div class="terr hidden" id="tr-error"></div>
+    <div id="tr-editor" class="hidden" style="display:grid;gap:16px">
+      <div class="tvid"><video id="tr-video" playsinline></video></div>
+      <div class="ttrack" id="tr-track">
+        <div class="trange" id="tr-range"></div><div class="tplay" id="tr-playhead"></div>
+        <div class="thandle" id="tr-h-start"><i></i></div><div class="thandle" id="tr-h-end"><i></i></div>
+      </div>
+      <div class="tlabels">
+        <div><small data-i18n="tStart">Start</small><b id="tr-start-label">0:00.0</b></div>
+        <div><small data-i18n="tLength">Length</small><b id="tr-len-label">0:00.0</b></div>
+        <div><small data-i18n="tEnd">End</small><b id="tr-end-label">0:00.0</b></div>
+      </div>
+      <div class="tbtns">
+        <button type="button" id="tr-set-start" data-i18n="setStart">Set start here</button>
+        <button type="button" id="tr-set-end" data-i18n="setEnd">Set end here</button>
+        <button type="button" id="tr-preview" data-i18n="previewClip">Preview clip</button>
+        <button type="button" id="tr-reset" data-i18n="reset">Reset</button>
+      </div>
+      <div id="tr-export" class="hidden"><div class="bar2" style="max-width:none"><div id="tr-export-bar"></div></div><p class="tnote" id="tr-export-text" style="margin-top:6px"></p></div>
+      <button class="primary" id="tr-save" type="button" style="width:100%;height:54px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span id="tr-save-text" data-i18n="saveClip">Save trimmed clip</span></button>
+      <p class="tnote" data-i18n="trimNote">Always saved as .mp4.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const root = document.documentElement;
+
+/* =========================================================
+   i18n (English / Arabic)
+   ========================================================= */
+const I18N = {
+  en: {
+    eyebrow:'Minimalist Engine',
+    sub:'A serene, raw-crafted tool to query X/Twitter profiles, analyze metadata, and download media seamlessly through smart fallbacks.',
+    ph:'x.com/user/status/… or @username', paste:'Paste', go:'Fetch', try:'Try',
+    recent:'Recent', clear:'Clear', how:'How it works',
+    s1t:'Copy the link', s1d:'Tap Share on any X post and copy its link.',
+    s2t:'Paste it here', s2d:'Drop it in the bar above, or just paste anywhere on this page.',
+    s3t:'Pick & download', s3d:'Preview the video, choose a quality and save it to your device.',
+    devby:'Developed by', fine:'Powered by FixTweet and public proxies. No API key. Nothing is stored on a server.',
+    bad:"That doesn't look like an X link or a username.",
+    fail:'Could not reach the service. Check your connection and try again.',
+    nopost:'This post could not be loaded. It may be private or deleted.',
+    nouser:'No account found with that username.',
+    retry:'Try again', dismiss:'Dismiss',
+    video:'Video', photo:'Photo', gif:'GIF', quote:'Quoted',
+    quality:'Quality', original:'Original', standard:'Standard', best:'Best', source:'Source',
+    download:'Download', downloadAll:'Download all', downloading:'Downloading', saved:'Saved',
+    route:'route', copyLink:'Copy link', openX:'Open on X', backup:'Backup',
+    copied:'Link copied', copyFail:'Could not copy', clipEmpty:'Clipboard is empty',
+    clipBlocked:'Clipboard blocked: press Ctrl / Cmd + V', dlFail:'Download failed. Use “Backup” or open the link.',
+    nomedia:'This post has no downloadable media.', hls:'This is a streaming playlist. Use Trim & Save to cut it as MP4, or paste the post link to download the video directly.',
+    direct:'Direct media', likes:'likes', reposts:'reposts', replies:'replies', views:'views',
+    followers:'Followers', following:'Following', posts:'Posts', likesStat:'Likes',
+    dlAvatar:'Avatar', dlBanner:'Banner', copyProfile:'Copy profile link', joined:'Joined',
+    tPost:'post', tUser:'user', tMedia:'media', verified:'Verified', itemOf:'of',
+    viewProfile:'View profile', trimBtn:'Trim & Save', editorLbl:'Video Editor', trimTitle:'Trim & Save',
+    tStart:'Start', tLength:'Length', tEnd:'End', setStart:'Set start here', setEnd:'Set end here', previewClip:'Preview clip', reset:'Reset',
+    saveClip:'Save trimmed clip', working:'Working...', trimNote:'Always saved as .mp4. Recording runs while the clip plays, so it takes about as long as the clip itself. Keep this tab open.',
+    fetchingVideo:'Fetching video...', readingPl:'Reading stream playlist...', dlStream:'Downloading stream...', preparing:'Preparing editor...',
+    converting:'Browser cannot play this format. Converting for preview (first time loads the engine)...', convPct:'Converting for preview...',
+    notVideo:'The link did not return a video file.', undecodable:'This video could not be decoded, even after conversion.',
+    trimFail:'Could not open this video:', recording:'Recording MP4...', encoding:'Encoding MP4...', loadEngine:'Loading video engine (first time only, ~30 MB)...',
+    starting:'Starting...', done:'Done', trimSaved:'Trimmed MP4 saved to your device', exportFail:'Export failed:', previewBlocked:'Preview blocked. Loading through fallback route...',
+  },
+  ar: {
+    eyebrow:'المحرك المينيمالي',
+    sub:'أداة هادئة مصنوعة بعناية للاستعلام عن حسابات X/تويتر وتحليل بياناتها وتحميل الوسائط بسلاسة عبر مسارات بديلة ذكية.',
+    ph:'الصق رابط المنشور أو @اسم_المستخدم', paste:'لصق', go:'جلب', try:'جرّب',
+    recent:'الأخيرة', clear:'مسح', how:'كيف يعمل',
+    s1t:'انسخ الرابط', s1d:'اضغط مشاركة على أي منشور في X ثم انسخ رابطه.',
+    s2t:'الصقه هنا', s2d:'ضعه في الشريط بالأعلى، أو الصق في أي مكان بالصفحة.',
+    s3t:'اختر وحمّل', s3d:'شاهد الفيديو، اختر الجودة، واحفظه على جهازك.',
+    devby:'تطوير', fine:'يعمل عبر FixTweet وبروكسيات عامة. بدون مفتاح API ولا يُحفظ شيء على خادم.',
+    bad:'هذا لا يشبه رابط X أو اسم مستخدم.',
+    fail:'تعذّر الوصول للخدمة. تحقق من الاتصال وحاول مرة أخرى.',
+    nopost:'تعذّر تحميل هذا المنشور. قد يكون خاصًا أو محذوفًا.',
+    nouser:'لا يوجد حساب بهذا الاسم.',
+    retry:'إعادة المحاولة', dismiss:'إغلاق',
+    video:'فيديو', photo:'صورة', gif:'GIF', quote:'مقتبس',
+    quality:'الجودة', original:'أصلية', standard:'عادية', best:'الأفضل', source:'المصدر',
+    download:'تحميل', downloadAll:'تحميل الكل', downloading:'جارٍ التحميل', saved:'تم الحفظ',
+    route:'مسار', copyLink:'نسخ الرابط', openX:'فتح في X', backup:'بديل',
+    copied:'تم نسخ الرابط', copyFail:'تعذّر النسخ', clipEmpty:'الحافظة فارغة',
+    clipBlocked:'الحافظة محظورة: اضغط Ctrl / Cmd + V', dlFail:'فشل التحميل. جرّب «بديل» أو افتح الرابط.',
+    nomedia:'هذا المنشور لا يحتوي على وسائط قابلة للتحميل.', hls:'هذا رابط بث (playlist). استخدم «قص وحفظ» لقصه بصيغة MP4، أو الصق رابط المنشور لتحميل الفيديو مباشرة.',
+    direct:'وسائط مباشرة', likes:'إعجاب', reposts:'إعادة نشر', replies:'رد', views:'مشاهدة',
+    followers:'المتابِعون', following:'يتابع', posts:'المنشورات', likesStat:'الإعجابات',
+    dlAvatar:'الصورة الشخصية', dlBanner:'الغلاف', copyProfile:'نسخ رابط الحساب', joined:'انضم',
+    tPost:'منشور', tUser:'حساب', tMedia:'وسائط', verified:'موثّق', itemOf:'من',
+    viewProfile:'عرض الحساب', trimBtn:'قص وحفظ', editorLbl:'محرر الفيديو', trimTitle:'قص وحفظ',
+    tStart:'البداية', tLength:'المدة', tEnd:'النهاية', setStart:'البداية هنا', setEnd:'النهاية هنا', previewClip:'معاينة المقطع', reset:'إعادة ضبط',
+    saveClip:'حفظ المقطع المقصوص', working:'جارٍ العمل...', trimNote:'يُحفظ دائمًا بصيغة .mp4. التسجيل يعمل أثناء تشغيل المقطع فيستغرق قدر مدته تقريبًا. أبقِ هذه الصفحة مفتوحة.',
+    fetchingVideo:'جارٍ جلب الفيديو...', readingPl:'جارٍ قراءة قائمة البث...', dlStream:'جارٍ تحميل البث...', preparing:'جارٍ تجهيز المحرر...',
+    converting:'المتصفح لا يشغّل هذه الصيغة. جارٍ التحويل للمعاينة (أول مرة يحمّل المحرك)...', convPct:'جارٍ التحويل للمعاينة...',
+    notVideo:'الرابط لم يُرجع ملف فيديو.', undecodable:'تعذّر فك ترميز هذا الفيديو حتى بعد التحويل.',
+    trimFail:'تعذّر فتح هذا الفيديو:', recording:'جارٍ تسجيل MP4...', encoding:'جارٍ ترميز MP4...', loadEngine:'جارٍ تحميل محرك الفيديو (أول مرة فقط، حوالي 30 ميجا)...',
+    starting:'جارٍ البدء...', done:'تم', trimSaved:'تم حفظ مقطع MP4 المقصوص على جهازك', exportFail:'فشل التصدير:', previewBlocked:'المعاينة محجوبة. جارٍ التحميل عبر مسار بديل...',
+  }
+};
+let lang = root.lang === 'ar' ? 'ar' : 'en';
+const t = (k) => (I18N[lang][k] ?? I18N.en[k] ?? k);
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const linkify = (s) => esc(s).replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u.length > 38 ? u.slice(0, 36) + '…' : u}</a>`);
+const nf = (n) => { try { return new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en', { notation: 'compact', maximumFractionDigits: 1 }).format(n); } catch (e) { return String(n); } };
+const nfFull = (n) => { try { return new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en').format(n); } catch (e) { return String(n); } };
+const fmtDur = (s) => { s = Math.round(s || 0); const m = Math.floor(s / 60), r = s % 60; return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`; };
+const fmtSize = (b) => b >= 1048576 ? (b / 1048576).toFixed(b > 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+const fmtDate = (d, withDay) => { try { const dt = d instanceof Date ? d : new Date(d); if (isNaN(dt)) return ''; return dt.toLocaleDateString(lang === 'ar' ? 'ar' : 'en', withDay ? { day: 'numeric', month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }); } catch (e) { return ''; } };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+const ICON = {
+  heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>',
+  repost:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>',
+  reply:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+  eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
+  open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>',
+  backup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  dl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>',
+  img:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0zM12 9v4M12 17h.01"/></svg>',
+};
+
+/* =========================================================
+   Network: JSON + media with multi-route fallback
+   ========================================================= */
+const CUSTOM_PROXY = ''; // optional: 'https://your-worker.workers.dev/?url='
+const PROXIES = [
+  ...(CUSTOM_PROXY ? [(u) => CUSTOM_PROXY + encodeURIComponent(u)] : []),
+  (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  (u) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
+  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  (u) => `https://thingproxy.freeboard.io/fetch/${u}`
+];
+
+async function fetchJson(url) {
+  const tryFetch = async (u) => {
+    const c = new AbortController(); const tm = setTimeout(() => c.abort(), 12000);
+    try {
+      const r = await fetch(u, { signal: c.signal });
+      let json = null; try { json = await r.json(); } catch (e) {}
+      return { ok: r.ok, status: r.status, json };
+    } finally { clearTimeout(tm); }
+  };
+  let last;
+  try { // FixTweet supports CORS; an API error body is a real answer, not a network failure
+    const d = await tryFetch(url);
+    if (d.json && (d.ok || d.json.message || d.json.tweet || d.json.user)) return d.json;
+  } catch (e) { last = e; }
+  for (const p of PROXIES) {
+    try { const d = await tryFetch(p(url)); if (d.json) return d.json; last = new Error('Proxy status ' + d.status); }
+    catch (e) { last = e; }
+  }
+  throw last || new Error('network');
+}
+
+async function streamToBlob(resp, onProgress, signal) {
+  const total = parseInt(resp.headers.get('content-length') || '0', 10);
+  if (!resp.body || !resp.body.getReader) return await resp.blob();
+  const rd = resp.body.getReader(); const chunks = []; let got = 0;
+  for (;;) {
+    if (signal && signal.aborted) throw new Error('aborted');
+    const { done, value } = await rd.read(); if (done) break;
+    chunks.push(value); got += value.length; if (onProgress) onProgress(got, total);
+  }
+  return new Blob(chunks, { type: resp.headers.get('content-type') || '' });
+}
+async function validateBlob(blob, type) {
+  const strict = ['video', 'photo', 'gif'].includes(type);
+  if (!blob.size) throw new Error('empty');
+  if (strict && blob.size < 512) throw new Error('tiny');
+  const ty = (blob.type || '').toLowerCase();
+  if (ty.includes('text/html')) throw new Error('html');
+  if (strict && (ty.includes('application/json') || ty.startsWith('text/'))) throw new Error('text');
+  const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+  if (head[0] === 0x3C || head[0] === 0x7B) throw new Error('not media');
+  return blob;
+}
+async function fetchBlob(url, type, onProgress, onRoute) {
+  const tries = [{ n: 'direct', u: url }];
+  if (type === 'photo') tries.push({ n: 'g', u: `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(url)}` });
+  PROXIES.forEach((fn, i) => tries.push({ n: 'p' + i, u: fn(url) }));
+  let last;
+  for (let i = 0; i < tries.length; i++) {
+    if (onRoute) onRoute(i + 1, tries.length);
+    const c = new AbortController(); const tm = setTimeout(() => c.abort(), 15000);
+    try {
+      const r = await fetch(tries[i].u, tries[i].n === 'direct' ? { mode: 'cors', signal: c.signal } : { signal: c.signal });
+      clearTimeout(tm);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const blob = await streamToBlob(r, onProgress, c.signal);
+      return await validateBlob(blob, type);
+    } catch (e) { clearTimeout(tm); last = e; }
+  }
+  throw last || new Error('all routes failed');
+}
+function saveBlob(blob, name) {
+  const u = URL.createObjectURL(blob); const a = document.createElement('a');
+  a.href = u; a.download = name; a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 120000);
+}
+function guessExt(url, type) {
+  if (type === 'video' || type === 'gif') return 'mp4';
+  const f = (url.match(/[?&]format=([a-z0-9]+)/i) || [])[1];
+  if (f) return f.toLowerCase() === 'jpeg' ? 'jpg' : f.toLowerCase();
+  const e = (url.split('?')[0].match(/\.(png|jpe?g|webp|gif)$/i) || [])[1];
+  if (e) return e.toLowerCase() === 'jpeg' ? 'jpg' : e.toLowerCase();
+  return 'jpg';
+}
+
+/* =========================================================
+   Input parsing
+   ========================================================= */
+const RESERVED = new Set(['home', 'i', 'search', 'explore', 'intent', 'share', 'hashtag', 'settings', 'messages', 'notifications', 'compose', 'login', 'signup', 'tos', 'privacy']);
+function parseInput(raw) {
+  const s = (raw || '').trim(); if (!s) return null;
+  const media = s.match(/(?:pbs\.twimg\.com|video\.twimg\.com|abs\.twimg\.com)\/[^\s]+|https?:\/\/[^\s]+?\.(?:mp4|mov|webm|m3u8|png|jpe?g|gif|webp)(?:\?[^\s]*)?/i);
+  if (media) {
+    const isVid = /\.(?:mp4|mov|webm|m3u8)/i.test(s) || s.includes('video.twimg.com');
+    const url = /^https?:\/\//i.test(s) ? s : 'https://' + s.replace(/^\/+/, '');
+    return { type: 'media', url, mediaType: isVid ? 'video' : 'photo', label: isVid ? 'Direct video' : 'Direct image' };
+  }
+  const st = s.match(/(?:twitter|x|fxtwitter|vxtwitter|fixupx|fixvx)\.com\/(?:[^\s?#]*?\/)?status(?:es)?\/(\d+)/i);
+  if (st) return { type: 'post', id: st[1], label: '#' + st[1] };
+  if (/^\d{10,}$/.test(s)) return { type: 'post', id: s, label: '#' + s };
+  let u = s;
+  const um = s.match(/(?:twitter|x)\.com\/([A-Za-z0-9_]{1,15})(?:[\/?#]|$)/i);
+  if (um) { if (RESERVED.has(um[1].toLowerCase())) return null; u = um[1]; }
+  u = u.replace(/^@/, '').trim();
+  if (/^[A-Za-z0-9_]{1,15}$/.test(u)) return { type: 'user', username: u, label: '@' + u };
+  return null;
+}
+const strongTarget = (s) => { const p = parseInput(s); if (!p) return false; return p.type !== 'user' || /^@/.test(s.trim()) || /(?:x|twitter)\.com\//i.test(s); };
+
+/* =========================================================
+   State + DOM
+   ========================================================= */
+const S = { view: null, items: [], cur: 0, tweet: null, user: null, busy: false, lastQuery: '' };
+const input = $('#q'), goBtn = $('#go'), pasteBtn = $('#paste'), clearBtn = $('#clear'), vf = $('#vf');
+const statusEl = $('#status'), resultEl = $('#result');
+let toastTm;
+function toast(msg) {
+  const el = $('#toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTm); toastTm = setTimeout(() => el.classList.remove('show'), 3000);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast(t('copied')); return; } catch (e) {}
+  const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast(t('copied')); } catch (e) { toast(t('copyFail')); }
+  ta.remove();
+}
+
+/* ---------- apply language ---------- */
+function applyLang() {
+  root.lang = lang; root.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  $('#lang-btn').textContent = lang === 'ar' ? 'English' : 'العربية';
+  $('#lang-btn').lang = lang === 'ar' ? 'en' : 'ar';
+  renderHistory();
+  if (S.view) renderView();
+}
+$('#lang-btn').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; store.set('frame_lang', lang); applyLang(); });
+$('#theme-btn').addEventListener('click', () => {
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next); store.set('frame_theme', next);
+  $('#meta-theme').content = next === 'dark' ? '#161412' : '#FAF8F5';
+});
+$('#meta-theme').content = root.getAttribute('data-theme') === 'dark' ? '#161412' : '#FAF8F5';
+
+/* ---------- ambient: spotlight ---------- */
+(() => {
+  let raf = 0, mx = 0, my = 0;
+  addEventListener('pointermove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; root.style.setProperty('--mx', mx + 'px'); root.style.setProperty('--my', my + 'px'); });
+  }, { passive: true });
+  // magnetic primary button
+  document.addEventListener('pointermove', (e) => {
+    const b = e.target.closest && e.target.closest('.primary');
+    document.querySelectorAll('.primary').forEach(x => { if (x !== b) x.style.transform = ''; });
+    if (!b || b.disabled) return;
+    const r = b.getBoundingClientRect();
+    b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * 0.09}px, ${(e.clientY - r.top - r.height / 2) * 0.16 - 2}px)`;
+  }, { passive: true });
+  document.addEventListener('pointerleave', () => document.querySelectorAll('.primary').forEach(x => x.style.transform = ''), true);
+})();
+
+/* =========================================================
+   History
+   ========================================================= */
+let history = [];
+try { history = JSON.parse(store.get('frame_history_v1', '[]')) || []; } catch (e) { history = []; }
+function saveHistory(item) {
+  history = [item, ...history.filter(h => h.q !== item.q)].slice(0, 8);
+  store.set('frame_history_v1', JSON.stringify(history)); renderHistory();
+}
+function renderHistory() {
+  const blk = $('#hist-block'), box = $('#hist');
+  if (!history.length) { blk.classList.add('hidden'); return; }
+  blk.classList.remove('hidden');
+  const tl = { post: t('tPost'), user: t('tUser'), media: t('tMedia') };
+  box.innerHTML = history.map((h, i) => `
+    <span class="hi" data-i="${i}">
+      <button type="button" data-act="h-open" data-i="${i}" style="display:inline-flex;align-items:center;gap:8px;min-width:0">
+        <span class="t">${esc(tl[h.type] || '')}</span><span class="lab"><bdi dir="ltr">${esc(h.label)}</bdi></span>
+      </button>
+      <button type="button" class="rm" data-act="h-rm" data-i="${i}" aria-label="Remove">${ICON.x}</button>
+    </span>`).join('');
+}
+$('#hist').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return; const i = +b.dataset.i;
+  if (b.dataset.act === 'h-open' && history[i]) { input.value = history[i].q; syncInput(); search(history[i].q); }
+  if (b.dataset.act === 'h-rm') { history.splice(i, 1); store.set('frame_history_v1', JSON.stringify(history)); renderHistory(); }
+});
+$('#hist-clear').addEventListener('click', () => { history = []; store.set('frame_history_v1', '[]'); renderHistory(); });
+
+/* =========================================================
+   Search flow
+   ========================================================= */
+function setBusy(b) {
+  S.busy = b; goBtn.disabled = b; vf.classList.toggle('busy', b);
+  $('#go-arr').classList.toggle('hidden', b); $('#go-spin').classList.toggle('hidden', !b);
+}
+function showError(msg) {
+  statusEl.innerHTML = `<div class="errbox" role="alert">${ICON.warn}<div><p>${esc(msg)}</p><div class="row"><button type="button" data-act="retry">${t('retry')}</button><button type="button" data-act="dismiss">${t('dismiss')}</button></div></div></div>`;
+}
+statusEl.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  if (b.dataset.act === 'dismiss') statusEl.innerHTML = '';
+  if (b.dataset.act === 'retry') search(S.lastQuery || input.value);
+});
+function showSkeleton() { statusEl.innerHTML = '<div class="skel" aria-hidden="true"><div class="s a"></div><div class="b"><div class="s"></div><div class="s"></div><div class="s"></div></div></div>'; }
+
+async function search(raw) {
+  if (S.busy) return;
+  const q = (raw ?? input.value).trim();
+  const p = parseInput(q);
+  statusEl.innerHTML = '';
+  if (!p) { showError(t('bad')); return; }
+  S.lastQuery = q; setBusy(true); showSkeleton(); resultEl.innerHTML = '';
+  try {
+    if (p.type === 'media') {
+      S.view = 'media'; S.tweet = null; S.user = null;
+      S.items = [makeMedia({ type: p.mediaType, url: p.url }, 'direct')]; S.cur = 0;
+      S.items[0].hls = /\.m3u8(\?|$)/i.test(p.url);
+    } else if (p.type === 'post') {
+      const d = await fetchJson(`https://api.fxtwitter.com/status/${p.id}`);
+      if (!d || !d.tweet) throw new Error(d && d.message ? d.message : t('nopost'));
+      S.view = 'post'; S.tweet = d.tweet; S.user = null; S.items = collectMedia(d.tweet); S.cur = 0;
+    } else {
+      const d = await fetchJson(`https://api.fxtwitter.com/${p.username}`);
+      if (!d || !d.user) throw new Error(d && d.message ? d.message : t('nouser'));
+      S.view = 'user'; S.user = d.user; S.tweet = null; S.items = [];
+    }
+    statusEl.innerHTML = '';
+    renderView();
+    vf.classList.remove('locked'); void vf.offsetWidth; vf.classList.add('locked');
+    saveHistory({ q, type: p.type, label: p.label, ts: Date.now() });
+    const top = resultEl.getBoundingClientRect().top;
+    if (top > innerHeight * 0.5) resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    console.error(err);
+    statusEl.innerHTML = '';
+    const m = err && err.message;
+    showError(m && m !== 'network' && !/Failed to fetch|aborted|Proxy status|NetworkError|Load failed/i.test(m) ? m : t('fail'));
+  } finally { setBusy(false); if (statusEl.querySelector('.skel')) statusEl.innerHTML = ''; }
+}
+
+/* =========================================================
+   Media model
+   ========================================================= */
+function makeMedia(m, from) {
+  const type = m.type === 'gif' ? 'gif' : (m.type === 'video' ? 'video' : 'photo');
+  let qs = [];
+  if (type !== 'photo') {
+    const seen = new Set();
+    (m.variants || []).filter(v => v && v.url && (/mp4/i.test(v.content_type || '') || /\.mp4(\?|$)/i.test(v.url)))
+      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
+      .forEach(v => {
+        const r = v.url.match(/\/(\d{2,4})x(\d{2,4})\//);
+        const side = r ? Math.min(+r[1], +r[2]) : 0;
+        const label = side ? side + 'p' : (v.bitrate ? Math.round(v.bitrate / 1000) + 'k' : 'HD');
+        if (seen.has(label)) return; seen.add(label);
+        qs.push({ url: v.url, label, bitrate: v.bitrate || 0 });
+      });
+    if (!qs.length) qs = [{ url: m.url, label: from === 'direct' ? 'source' : 'best', bitrate: 0 }];
+  } else {
+    const isTw = /pbs\.twimg\.com/.test(m.url || '');
+    const base = (m.url || '').replace(/([?&])name=\w+&?/, '$1').replace(/[?&]$/, '');
+    qs = isTw
+      ? [{ url: base + (base.includes('?') ? '&' : '?') + 'name=orig', label: 'original', bitrate: 0 }, { url: m.url, label: 'standard', bitrate: 0 }]
+      : [{ url: m.url, label: from === 'direct' ? 'source' : 'original', bitrate: 0 }];
+  }
+  return { type, url: m.url, thumb: m.thumbnail_url || '', w: m.width || 0, h: m.height || 0, dur: m.duration || 0, qs, q: 0, from };
+}
+function collectMedia(tw) {
+  const out = [];
+  ((tw.media && tw.media.all) || []).forEach(m => m && m.url && out.push(makeMedia(m, 'post')));
+  ((tw.quote && tw.quote.media && tw.quote.media.all) || []).forEach(m => m && m.url && out.push(makeMedia(m, 'quote')));
+  return out;
+}
+const qLabel = (l) => ({ original: t('original'), standard: t('standard'), best: t('best'), source: t('source') }[l] || l);
+
+/* =========================================================
+   Rendering
+   ========================================================= */
+function renderView() {
+  if (S.view === 'user') renderUser(S.user);
+  else renderTheater();
+}
+
+function renderTheater() {
+  const tw = S.tweet;
+  let head = '';
+  if (tw && tw.author) {
+    const a = tw.author;
+    const when = tw.created_timestamp ? fmtDate(tw.created_timestamp * 1000, true) : (tw.created_at ? fmtDate(tw.created_at, true) : '');
+    head = `
+      <button type="button" class="author" data-act="author" data-u="${esc(a.screen_name)}" title="${esc(t('viewProfile'))}">
+        <img class="avatar" referrerpolicy="no-referrer" src="${esc((a.avatar_url || '').replace(/_normal(\.\w+)$/, '$1'))}" alt="">
+        <div class="who"><b><bdi>${esc(a.name)}</bdi></b><span><bdi dir="ltr">@${esc(a.screen_name)}</bdi></span></div>
+        <svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      ${tw.text ? `<p class="ttext" dir="auto">${linkify(tw.text)}</p>` : ''}`;
+  } else {
+    head = `<div class="author"><div class="who"><b>${t('direct')}</b><span><bdi dir="ltr">${esc((S.items[0] && S.items[0].url || '').replace(/^https?:\/\//, '').split('/')[0])}</bdi></span></div></div>`;
+  }
+
+  let body;
+  if (!S.items.length) body = `<div class="empty">${t('nomedia')}</div>`;
+  else body = `<div class="stage" id="stage"></div><div id="reel"></div>`;
+
+  let stats = '';
+  if (tw) {
+    const bits = [];
+    if (typeof tw.likes === 'number') bits.push(`<span>${ICON.heart}<b>${nf(tw.likes)}</b> ${t('likes')}</span>`);
+    if (typeof tw.retweets === 'number') bits.push(`<span>${ICON.repost}<b>${nf(tw.retweets)}</b> ${t('reposts')}</span>`);
+    if (typeof tw.replies === 'number') bits.push(`<span>${ICON.reply}<b>${nf(tw.replies)}</b> ${t('replies')}</span>`);
+    if (typeof tw.views === 'number' && tw.views > 0) bits.push(`<span>${ICON.eye}<b>${nf(tw.views)}</b> ${t('views')}</span>`);
+    const when = tw.created_timestamp ? fmtDate(tw.created_timestamp * 1000, true) : '';
+    if (bits.length) stats = `<div class="stats">${bits.join('')}${when ? `<span class="when">${esc(when)}</span>` : ''}</div>`;
+  }
+
+  resultEl.innerHTML = `<article class="theater">${head}${body}${stats}</article>`;
+  if (S.items.length) { renderStage(); renderReel(); }
+}
+
+function renderStage() {
+  const it = S.items[S.cur]; if (!it) return;
+  const q = it.qs[it.q];
+  const poster = it.thumb || (it.type === 'photo' ? it.url : '');
+  const typeLabel = it.type === 'video' ? t('video') : it.type === 'gif' ? t('gif') : t('photo');
+  const viewer = it.type === 'photo'
+    ? `<img src="${esc(q.url)}" referrerpolicy="no-referrer" alt="" onerror="if(this.dataset.f!=='1'){this.dataset.f='1';this.src='${esc(it.url)}'}">`
+    : `<video controls playsinline preload="metadata" ${it.type === 'gif' ? 'loop muted autoplay' : ''} ${poster ? `poster="${esc(poster)}"` : ''} src="${esc(q.url)}"></video>`;
+  const est = (q.bitrate && it.dur) ? q.bitrate * it.dur / 8 : 0;
+  const pills = [`<span class="pill hot">${typeLabel}</span>`];
+  if (it.dur) pills.push(`<span class="pill">${fmtDur(it.dur)}</span>`);
+  if (it.w && it.h) pills.push(`<span class="pill" dir="ltr">${it.w}×${it.h}</span>`);
+  if (it.from === 'quote') pills.push(`<span class="pill">${t('quote')}</span>`);
+  if (S.items.length > 1) pills.push(`<span class="pill">${S.cur + 1} ${t('itemOf')} ${S.items.length}</span>`);
+
+  const qsHtml = it.qs.length > 1 || it.type !== 'photo'
+    ? `<div><p class="lbl">${t('quality')}</p><div class="qs" role="radiogroup">${it.qs.map((x, i) => {
+        const sz = (x.bitrate && it.dur) ? '~' + fmtSize(x.bitrate * it.dur / 8) : '';
+        return `<button type="button" class="q ${i === it.q ? 'on' : ''}" role="radio" aria-checked="${i === it.q}" data-act="q" data-i="${i}"><b>${esc(qLabel(x.label))}</b><small>${sz || '&nbsp;'}</small></button>`;
+      }).join('')}</div></div>` : '';
+
+  const dlBtn = it.hls
+    ? `<p class="note err">${t('hls')}</p>`
+    : `<button type="button" class="primary dl" id="dl" data-act="dl">${ICON.dl}<span id="dl-t">${t('download')}${est ? ` · ~${fmtSize(est)}` : ''}</span></button><p class="note" id="note"></p>`;
+  const trimBtn = `<button type="button" class="btn2" data-act="trim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg><span>${t('trimBtn')}</span></button>`;
+  const canTrim = it.type !== 'photo';
+  const allBtn = S.items.length > 1 && !it.hls ? `<button type="button" class="primary dl allbtn" id="dlall" data-act="dlall" style="height:46px;font-size:14px;background:var(--surface2);color:var(--text);box-shadow:none;border:1px solid var(--line2)">${ICON.dl}<span id="dlall-t">${t('downloadAll')} (${S.items.length})</span></button>` : '';
+  const tid = S.tweet ? S.tweet.id : '';
+  const sec = `<div class="sec">
+      <button type="button" data-act="copy">${ICON.copy}<span>${t('copyLink')}</span></button>
+      <a href="${esc(S.tweet && S.tweet.url ? S.tweet.url : it.url)}" target="_blank" rel="noopener noreferrer">${ICON.open}<span>${t('openX')}</span></a>
+      ${tid ? `<a href="https://d.fxtwitter.com/status/${esc(tid)}" target="_blank" rel="noopener noreferrer">${ICON.backup}<span>${t('backup')}</span></a>` : `<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">${ICON.backup}<span>${t('backup')}</span></a>`}
+    </div>`;
+
+  $('#stage').innerHTML = `
+    <div class="vwrap">
+      ${poster ? `<div class="glow" style="background-image:url('${esc(poster).replace(/'/g, '%27')}')"></div>` : ''}
+      <div class="viewer">${viewer}<div class="tag"><span>${typeLabel}${it.dur ? ' · ' + fmtDur(it.dur) : ''}</span></div></div>
+    </div>
+    <div class="panel">
+      <div class="meta">${pills.join('')}</div>
+      ${qsHtml}${dlBtn}${canTrim ? trimBtn : ''}${allBtn}${sec}
+    </div>`;
+}
+
+function renderReel() {
+  const el = $('#reel'); if (!el) return;
+  if (S.items.length < 2) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="reel">${S.items.map((it, i) => {
+    const src = it.thumb || (it.type === 'photo' ? it.url : '');
+    return `<button type="button" class="th ${i === S.cur ? 'on' : ''}" data-act="pick" data-i="${i}" aria-label="${i + 1}">${src ? `<img src="${esc(src)}" referrerpolicy="no-referrer" alt="">` : ''}<em>${i + 1}</em></button>`;
+  }).join('')}</div>`;
+}
+
+function renderUser(u) {
+  const biz = u.verification && u.verification.type === 'organization' || u.verified_type === 'organization';
+  const avatar = (u.avatar_url || '').replace(/_normal(\.\w+)$/, '$1');
+  const joined = u.joined ? fmtDate(u.joined, false) : '';
+  const web = u.website && (u.website.url || u.website);
+  const webUrl = typeof web === 'string' ? web : '';
+  const stats = [
+    ['followers', u.followers], ['following', u.following], ['posts', u.tweets], ['likesStat', u.likes]
+  ].filter(x => typeof x[1] === 'number');
+  resultEl.innerHTML = `
+  <article class="theater prof">
+    <div class="banner">${u.banner_url ? `<img src="${esc(u.banner_url)}" referrerpolicy="no-referrer" alt="">` : ''}</div>
+    <div class="pbody">
+      <div class="phead">
+        <img class="pav ${biz ? 'biz' : ''}" referrerpolicy="no-referrer" src="${esc(avatar)}" alt="">
+        <div class="pname"><b><bdi>${esc(u.name)}</bdi></b><span><bdi dir="ltr">@${esc(u.screen_name)}</bdi></span></div>
+      </div>
+      ${u.description ? `<p class="bio" dir="auto">${linkify(u.description)}</p>` : ''}
+      <div class="facts">
+        ${u.location ? `<span>📍 <bdi>${esc(u.location)}</bdi></span>` : ''}
+        ${webUrl ? `<a href="${esc(webUrl)}" target="_blank" rel="noopener noreferrer"><bdi dir="ltr">${esc(webUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</bdi></a>` : ''}
+        ${joined ? `<span>${t('joined')} ${esc(joined)}</span>` : ''}
+      </div>
+      <div class="grid4">${stats.map(([k, v]) => `<div class="stat"><b data-count="${v}">0</b><span>${t(k)}</span></div>`).join('')}</div>
+      <div class="pacts">
+        <button type="button" data-act="p-avatar" ${avatar ? '' : 'disabled'}>${ICON.user}<span>${t('dlAvatar')}</span></button>
+        <button type="button" data-act="p-banner" ${u.banner_url ? '' : 'disabled'}>${ICON.img}<span>${t('dlBanner')}</span></button>
+        <button type="button" data-act="p-copy">${ICON.copy}<span>${t('copyProfile')}</span></button>
+        <a href="https://x.com/${esc(u.screen_name)}" target="_blank" rel="noopener noreferrer">${ICON.open}<span>${t('openX')}</span></a>
+      </div>
+    </div>
+  </article>`;
+  // count-up
+  resultEl.querySelectorAll('[data-count]').forEach(el => {
+    const to = +el.dataset.count; const t0 = performance.now(); const dur = 1100;
+    const tick = (n) => { const p = Math.min(1, (n - t0) / dur); const e = 1 - Math.pow(1 - p, 4); el.textContent = nfFull(Math.round(to * e)); if (p < 1) requestAnimationFrame(tick); else el.textContent = to >= 100000 ? nf(to) : nfFull(to); };
+    requestAnimationFrame(tick);
+  });
+}
+
+/* =========================================================
+   Downloads
+   ========================================================= */
+async function downloadItem(it, idx, ui) {
+  const order = [it.q, ...it.qs.map((_, i) => i).filter(i => i !== it.q)];
+  let last;
+  for (const qi of order) {
+    const q = it.qs[qi];
+    try {
+      const blob = await fetchBlob(q.url, it.type, ui.progress, ui.route);
+      const id = S.tweet ? S.tweet.id : 'media';
+      const suffix = it.type === 'video' && /\d+p/.test(q.label) ? '-' + q.label : '';
+      saveBlob(blob, `frame-${id}-${idx + 1}${suffix}.${guessExt(q.url, it.type)}`);
+      return;
+    } catch (e) { last = e; }
+  }
+  throw last || new Error('fail');
+}
+function makeUI(btn, labelEl, prefix) {
+  let route = '';
+  return {
+    progress(got, total) {
+      const pct = total ? Math.min(100, Math.round(got / total * 100)) : 0;
+      btn.style.setProperty('--p', total ? (got / total).toFixed(3) : '0.15');
+      labelEl.textContent = `${prefix || ''}${t('downloading')} ${total ? pct + '%' : fmtSize(got)}`;
+    },
+    route(n, m) { route = n > 1 ? ` · ${t('route')} ${n}/${m}` : ''; const note = $('#note'); if (note) note.textContent = route ? t('route') + ' ' + n + '/' + m : ''; }
+  };
+}
+async function runDownload(btn) {
+  const it = S.items[S.cur]; if (!it || btn.dataset.busy) return;
+  const lab = $('#dl-t'); const orig = lab.textContent; const note = $('#note');
+  btn.dataset.busy = '1'; btn.disabled = true; btn.classList.remove('done'); note.className = 'note'; note.textContent = '';
+  try {
+    await downloadItem(it, S.cur, makeUI(btn, lab));
+    btn.style.setProperty('--p', 1); btn.classList.add('done'); lab.textContent = t('saved'); note.textContent = '';
+  } catch (e) {
+    console.error(e); note.className = 'note err'; note.textContent = t('dlFail'); lab.textContent = orig; btn.style.setProperty('--p', 0);
+  } finally {
+    delete btn.dataset.busy; btn.disabled = false;
+    setTimeout(() => { if (btn.classList.contains('done')) { btn.classList.remove('done'); btn.style.setProperty('--p', 0); lab.textContent = orig; } }, 2600);
+  }
+}
+async function runDownloadAll(btn) {
+  if (btn.dataset.busy) return; btn.dataset.busy = '1'; btn.disabled = true;
+  const lab = $('#dlall-t'); const orig = lab.textContent; const note = $('#note'); let fails = 0;
+  for (let i = 0; i < S.items.length; i++) {
+    const it = S.items[i]; if (it.hls) continue;
+    try { await downloadItem(it, i, makeUI(btn, lab, `${i + 1}/${S.items.length} · `)); }
+    catch (e) { fails++; console.error(e); }
+    await new Promise(r => setTimeout(r, 450));
+  }
+  btn.style.setProperty('--p', 0); lab.textContent = fails ? orig : t('saved');
+  if (note) { note.className = fails ? 'note err' : 'note'; note.textContent = fails ? t('dlFail') : ''; }
+  setTimeout(() => { lab.textContent = orig; }, 2600);
+  delete btn.dataset.busy; btn.disabled = false;
+}
+async function profileDownload(btn, url, name) {
+  if (!url || btn.dataset.busy) return; btn.dataset.busy = '1';
+  const span = btn.querySelector('span'); const orig = span.textContent;
+  try {
+    const blob = await fetchBlob(url, 'photo', (g, tt) => { span.textContent = tt ? Math.round(g / tt * 100) + '%' : '…'; });
+    saveBlob(blob, `${name}.${guessExt(url, 'photo')}`); span.textContent = t('saved');
+  } catch (e) { console.error(e); span.textContent = orig; toast(t('dlFail')); }
+  setTimeout(() => { span.textContent = orig; delete btn.dataset.busy; }, 1800);
+}
+
+/* =========================================================
+   Events
+   ========================================================= */
+resultEl.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'author') { const u = '@' + b.dataset.u; setValue(u, false); search(u); }
+  else if (act === 'pick') { S.cur = +b.dataset.i; renderStage(); renderReel(); }
+  else if (act === 'q') {
+    const it = S.items[S.cur]; it.q = +b.dataset.i; const vid = $('.viewer video');
+    renderStage(); // re-render with new quality / preview source
+  }
+  else if (act === 'trim') { const it = S.items[S.cur]; if (it) openTrimmer(it.hls ? it.url : it.qs[it.q].url, it.type); }
+  else if (act === 'dl') runDownload(b);
+  else if (act === 'dlall') runDownloadAll(b);
+  else if (act === 'copy') { const it = S.items[S.cur]; copyText((S.tweet && S.tweet.url) || (it && it.qs[it.q].url) || ''); }
+  else if (act === 'p-avatar') profileDownload(b, (S.user.avatar_url || '').replace(/_normal(\.\w+)$/, '$1'), `${S.user.screen_name}-avatar`);
+  else if (act === 'p-banner') profileDownload(b, S.user.banner_url, `${S.user.screen_name}-banner`);
+  else if (act === 'p-copy') copyText(S.user.url || `https://x.com/${S.user.screen_name}`);
+});
+
+function syncInput() {
+  const has = input.value.trim().length > 0;
+  pasteBtn.hidden = has; clearBtn.hidden = !has;
+}
+function setValue(v, go) { input.value = v; syncInput(); if (go && strongTarget(v)) search(v); }
+
+input.addEventListener('input', syncInput);
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); if (e.key === 'Escape' && input.value) setValue('', false); });
+input.addEventListener('paste', (e) => {
+  const text = ((e.clipboardData || window.clipboardData).getData('text') || '').trim();
+  if (text && strongTarget(text)) { e.preventDefault(); setValue(text, true); }
+});
+goBtn.addEventListener('click', () => search());
+clearBtn.addEventListener('click', () => { setValue('', false); input.focus(); });
+pasteBtn.addEventListener('click', async () => {
+  try {
+    const text = ((await navigator.clipboard.readText()) || '').trim();
+    if (!text) { toast(t('clipEmpty')); return; }
+    setValue(text, true); if (!strongTarget(text)) input.focus();
+  } catch (e) { input.focus(); toast(t('clipBlocked')); }
+});
+document.querySelectorAll('[data-fill]').forEach(b => b.addEventListener('click', () => { setValue(b.dataset.fill, false); input.focus(); }));
+
+// paste anywhere on the page
+document.addEventListener('paste', (e) => {
+  if (document.activeElement === input) return;
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (/INPUT|TEXTAREA/.test(tag)) return;
+  const text = ((e.clipboardData || window.clipboardData).getData('text') || '').trim();
+  if (text && strongTarget(text)) { setValue(text, true); scrollTo({ top: 0, behavior: 'smooth' }); }
+});
+document.addEventListener('keydown', (e) => {
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (e.key === '/' && !/INPUT|TEXTAREA/.test(tag) && !e.metaKey && !e.ctrlKey) { e.preventDefault(); input.focus(); input.select(); }
+});
+
+
+/* =========================================================
+   Trim & Save editor
+   ========================================================= */
+const TE = {
+  modal: $('#trim-modal'), loading: $('#tr-loading'), loadingText: $('#tr-loading-text'), loadBar: $('#tr-load-bar'),
+  error: $('#tr-error'), editor: $('#tr-editor'), video: $('#tr-video'), track: $('#tr-track'), range: $('#tr-range'),
+  playhead: $('#tr-playhead'), hStart: $('#tr-h-start'), hEnd: $('#tr-h-end'),
+  startLabel: $('#tr-start-label'), endLabel: $('#tr-end-label'), lenLabel: $('#tr-len-label'),
+  exportWrap: $('#tr-export'), exportBar: $('#tr-export-bar'), exportText: $('#tr-export-text'),
+  saveBtn: $('#tr-save'), saveText: $('#tr-save-text')
+};
+const TR = { usedPreview: false, cancelled: false, ext: 'mp4', blob: null, blobUrl: null, duration: 0, start: 0, end: 0, previewing: false, exporting: false, recorder: null, token: 0 };
+const fmtTime = (sec) => { sec = Math.max(0, sec || 0); const m = Math.floor(sec / 60); return `${m}:${(sec % 60).toFixed(1).padStart(4, '0')}`; };
+
+function trimRender() {
+  if (!TR.duration) return;
+  const sP = TR.start / TR.duration * 100, eP = TR.end / TR.duration * 100;
+  TE.hStart.style.left = sP + '%'; TE.hEnd.style.left = eP + '%';
+  TE.range.style.left = sP + '%'; TE.range.style.width = (eP - sP) + '%';
+  TE.startLabel.textContent = fmtTime(TR.start); TE.endLabel.textContent = fmtTime(TR.end); TE.lenLabel.textContent = fmtTime(TR.end - TR.start);
+}
+function trimRenderPlayhead() { if (TR.duration) TE.playhead.style.left = (TE.video.currentTime / TR.duration * 100) + '%'; }
+function trimShow(which, msg) {
+  TE.loading.classList.toggle('hidden', which !== 'loading');
+  TE.editor.classList.toggle('hidden', which !== 'editor');
+  TE.error.classList.toggle('hidden', which !== 'error');
+  if (which === 'error') TE.error.textContent = msg || 'Error';
+}
+async function sniffContainer(blob) {
+  const h = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+  const ascii = (a, b) => String.fromCharCode(...h.slice(a, b));
+  if (h[0] === 0x3C || h[0] === 0x7B) return 'bad';
+  if (ascii(4, 8) === 'ftyp' || ['styp', 'moof', 'moov', 'mdat', 'free', 'sidx'].includes(ascii(4, 8))) return 'mp4';
+  if (h[0] === 0x1A && h[1] === 0x45 && h[2] === 0xDF && h[3] === 0xA3) return 'webm';
+  if (h[0] === 0x47) return 'ts';
+  return 'unknown';
+}
+async function fetchHlsAsBlob(url, onProgress) {
+  const pl = await fetchBlob(url, 'playlist');
+  const text = await pl.text();
+  if (!text.includes('#EXTM3U')) throw new Error('Not a valid HLS playlist');
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.some(l => l.startsWith('#EXT-X-STREAM-INF'))) {
+    let best = null, bestBw = -1;
+    lines.forEach((l, i) => {
+      if (!l.startsWith('#EXT-X-STREAM-INF')) return;
+      const bw = parseInt((l.match(/BANDWIDTH=(\d+)/) || [])[1] || '0', 10); const nx = lines[i + 1];
+      if (nx && !nx.startsWith('#') && bw > bestBw) { best = nx; bestBw = bw; }
+    });
+    if (!best) throw new Error('No playable variant in HLS playlist');
+    return fetchHlsAsBlob(new URL(best, url).href, onProgress);
+  }
+  if (lines.some(l => l.startsWith('#EXT-X-KEY') && !/METHOD=NONE/.test(l))) throw new Error('This stream is encrypted and cannot be downloaded.');
+  const mapLine = lines.find(l => l.startsWith('#EXT-X-MAP:'));
+  const mapUri = mapLine && (mapLine.match(/URI="([^"]+)"/) || [])[1];
+  const segs = lines.filter(l => !l.startsWith('#')).map(l => new URL(l, url).href);
+  if (!segs.length) throw new Error('HLS playlist has no segments');
+  const parts = new Array(segs.length); let nx = 0, done = 0;
+  const worker = async () => { for (;;) { const i = nx++; if (i >= segs.length) return; parts[i] = await fetchBlob(segs[i], 'segment'); done++; onProgress(done, segs.length); } };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  const all = mapUri ? [await fetchBlob(new URL(mapUri, url).href, 'segment'), ...parts] : parts;
+  return new Blob(all, { type: mapUri ? 'video/mp4' : 'video/mp2t' });
+}
+function tryPlay(url) {
+  return new Promise((resolve) => {
+    const v = TE.video; let finished = false;
+    const fin = (ok) => { if (finished) return; finished = true; clearTimeout(timer); v.removeEventListener('loadeddata', onLoaded); v.removeEventListener('error', onErr); resolve(ok); };
+    const onLoaded = () => fin(v.videoWidth > 0 && isFinite(v.duration) && v.duration > 0);
+    const onErr = () => fin(false);
+    const timer = setTimeout(() => fin(false), 15000);
+    v.addEventListener('loadeddata', onLoaded); v.addEventListener('error', onErr);
+    v.src = url; v.load();
+  });
+}
+async function buildPreview(blob, ext, onPct) {
+  const ff = await loadFFmpeg(); const name = 'src.' + ext;
+  await ff.writeFile(name, new Uint8Array(await blob.arrayBuffer()));
+  ffmpegProgressCb = (pr) => onPct(Math.min(99, Math.max(0, Math.round(pr * 100))));
+  try {
+    const code = await ff.exec(['-i', name, '-vf', "scale=-2:'min(480,ih)'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', 'preview.mp4']);
+    if (code !== 0) throw new Error('Could not convert this video (encoder code ' + code + '). ' + ff.lastLog());
+    return new Blob([await ff.readFile('preview.mp4')], { type: 'video/mp4' });
+  } finally { ffmpegProgressCb = null; try { await ff.deleteFile(name); await ff.deleteFile('preview.mp4'); } catch (e) {} }
+}
+
+async function openTrimmer(url, mediaType) {
+  closeTrimmer();
+  const token = ++TR.token;
+  TE.modal.classList.add('open'); root.style.overflow = 'hidden';
+  trimShow('loading');
+  const setStatus = (txt, pct) => { if (token !== TR.token) return; TE.loadingText.textContent = txt; if (pct != null) TE.loadBar.style.width = pct + '%'; };
+  setStatus(t('fetchingVideo'), 0);
+  try {
+    let blob;
+    if (/\.m3u8(\?|$)/i.test(url)) {
+      setStatus(t('readingPl'), 3);
+      blob = await fetchHlsAsBlob(url, (d, n) => setStatus(`${t('dlStream')} ${d}/${n}`, Math.round(d / n * 100)));
+    } else {
+      let routeLabel = '';
+      blob = await fetchBlob(url, 'video', (got, total) => {
+        if (total) setStatus(`${t('fetchingVideo')} ${Math.round(got / total * 100)}%${routeLabel}`, Math.round(got / total * 100));
+        else setStatus(`${t('fetchingVideo')} ${(got / 1048576).toFixed(1)} MB${routeLabel}`, 60);
+      }, (i, n) => { routeLabel = i > 1 ? ` (${t('route')} ${i}/${n})` : ''; setStatus(`${t('fetchingVideo')}${routeLabel}`); });
+    }
+    if (token !== TR.token) return;
+    const kind = await sniffContainer(blob);
+    if (kind === 'bad') throw new Error(t('notVideo'));
+    TR.blob = blob; TR.ext = { mp4: 'mp4', webm: 'webm', ts: 'ts' }[kind] || 'mp4';
+
+    let playable = false;
+    if (kind !== 'ts') {
+      setStatus(t('preparing'), 100);
+      const mime = { mp4: 'video/mp4', webm: 'video/webm' }[kind] || 'video/mp4';
+      const nativeUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
+      playable = await tryPlay(nativeUrl);
+      if (token !== TR.token) { URL.revokeObjectURL(nativeUrl); return; }
+      if (playable) TR.blobUrl = nativeUrl; else URL.revokeObjectURL(nativeUrl);
+    }
+    if (!playable) {
+      setStatus(t('converting'), 0);
+      const preview = await buildPreview(blob, TR.ext, (pct) => setStatus(`${t('convPct')} ${pct}%`, pct));
+      if (token !== TR.token) return;
+      const previewUrl = URL.createObjectURL(preview);
+      playable = await tryPlay(previewUrl);
+      if (token !== TR.token) { URL.revokeObjectURL(previewUrl); return; }
+      if (!playable) { URL.revokeObjectURL(previewUrl); throw new Error(t('undecodable')); }
+      TR.blobUrl = previewUrl; TR.usedPreview = true;
+    }
+    TR.duration = TE.video.duration; TR.start = 0; TR.end = TR.duration;
+    trimShow('editor'); trimRender(); trimRenderPlayhead();
+  } catch (err) {
+    if (token !== TR.token) return;
+    console.error(err);
+    trimShow('error', `${t('trimFail')} ${err.message || ''}`);
+  }
+}
+function closeTrimmer() {
+  TR.token++;
+  if (TR.exporting) stopExport();
+  TR.previewing = false;
+  try { TE.video.pause(); TE.video.removeAttribute('src'); TE.video.load(); } catch (e) {}
+  if (TR.blobUrl) { URL.revokeObjectURL(TR.blobUrl); TR.blobUrl = null; }
+  TR.duration = 0; TR.blob = null; TR.usedPreview = false;
+  TE.exportWrap.classList.add('hidden');
+  TE.modal.classList.remove('open'); root.style.overflow = '';
+}
+
+function trimTimeFromEvent(e) { const r = TE.track.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * TR.duration; }
+function bindHandle(el, which) {
+  el.addEventListener('pointerdown', (e) => {
+    if (TR.exporting || !TR.duration) return;
+    e.preventDefault(); e.stopPropagation();
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    const move = (ev) => {
+      const tm = trimTimeFromEvent(ev), minLen = Math.min(0.2, TR.duration);
+      if (which === 'start') TR.start = Math.min(tm, TR.end - minLen); else TR.end = Math.max(tm, TR.start + minLen);
+      TR.start = Math.max(0, TR.start); TR.end = Math.min(TR.duration, TR.end);
+      TE.video.currentTime = which === 'start' ? TR.start : TR.end;
+      trimRender(); trimRenderPlayhead();
+    };
+    const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  });
+}
+bindHandle(TE.hStart, 'start'); bindHandle(TE.hEnd, 'end');
+TE.track.addEventListener('pointerdown', (e) => { if (TR.exporting || !TR.duration) return; TE.video.currentTime = trimTimeFromEvent(e); trimRenderPlayhead(); });
+TE.video.addEventListener('timeupdate', () => {
+  trimRenderPlayhead();
+  if (TR.previewing && !TR.exporting && TE.video.currentTime >= TR.end) { TE.video.pause(); TR.previewing = false; }
+});
+TE.video.addEventListener('click', () => { if (!TR.exporting) TE.video.paused ? TE.video.play() : TE.video.pause(); });
+$('#tr-set-start').addEventListener('click', () => { if (TR.exporting) return; TR.start = Math.max(0, Math.min(TE.video.currentTime, TR.end - 0.2)); trimRender(); });
+$('#tr-set-end').addEventListener('click', () => { if (TR.exporting) return; TR.end = Math.min(TR.duration, Math.max(TE.video.currentTime, TR.start + 0.2)); trimRender(); });
+$('#tr-reset').addEventListener('click', () => { if (TR.exporting) return; TR.start = 0; TR.end = TR.duration; TE.video.currentTime = 0; trimRender(); trimRenderPlayhead(); });
+$('#tr-preview').addEventListener('click', () => { if (TR.exporting) return; TE.video.currentTime = TR.start; TR.previewing = true; TE.video.play(); });
+$('#tr-close').addEventListener('click', closeTrimmer);
+TE.modal.addEventListener('click', (e) => { if (e.target === TE.modal) closeTrimmer(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && TE.modal.classList.contains('open')) closeTrimmer(); });
+
+/* ---- export engine (ffmpeg.wasm fallback, runs in its own worker) ---- */
+        const FF_BASE = 'https://cdn.jsdelivr.net/npm';
+const FF_URLS = {
+    core: `${FF_BASE}/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js`,
+    wasm: `${FF_BASE}/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm`
+};
+let ffmpegInstance = null;
+let ffmpegLoading = null;
+let ffmpegProgressCb = null;
+
+// Runs inside our own Web Worker (stringified below). Talks to the raw ffmpeg core with plain messages only.
+function ffWorkerMain() {
+    let core = null;
+    self.onmessage = async (e) => {
+        const { id, type, data } = e.data;
+        try {
+            let result = true;
+            let transfer = [];
+            if (type === 'load') {
+                importScripts(data.coreURL);
+                if (typeof self.createFFmpegCore !== 'function') throw new Error('Encoder core did not initialise');
+                core = await self.createFFmpegCore({
+                    mainScriptUrlOrBlob: data.coreURL + '#' + btoa(JSON.stringify({ wasmURL: data.wasmURL, workerURL: '' })),
+                    locateFile: (path) => path.endsWith('.wasm') ? data.wasmURL : path
+                });
+                core.setLogger((d) => self.postMessage({ type: 'log', msg: (d && d.message) ? d.message : String(d) }));
+                core.setProgress((d) => self.postMessage({ type: 'progress', progress: (d && typeof d.progress === 'number') ? d.progress : 0 }));
+            } else if (type === 'write') {
+                core.FS.writeFile(data.path, data.data);
+            } else if (type === 'exec') {
+                if (core.setTimeout) core.setTimeout(-1);
+                core.exec(...data.args);
+                result = core.ret;
+                core.reset();
+            } else if (type === 'read') {
+                result = new Uint8Array(core.FS.readFile(data.path));
+                transfer = [result.buffer];
+            } else if (type === 'delete') {
+                core.FS.unlink(data.path);
+            }
+            self.postMessage({ id, result }, transfer);
+        } catch (err) {
+            self.postMessage({ id, error: (err && err.message) ? err.message : String(err) });
+        }
+    };
+}
+
+function createFFmpegWorker() {
+    const src = `(${ffWorkerMain.toString()})()`;
+    const worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    let nextId = 1;
+    const pending = {};
+    const logs = [];
+    const rejectAll = (msg) => { Object.keys(pending).forEach(k => { pending[k].reject(new Error(msg)); delete pending[k]; }); };
+
+    const api = {
+        onprogress: null,
+        lastLog: () => logs.slice(-6).join('\n'),
+        terminate: () => { worker.terminate(); rejectAll('Cancelled'); },
+        load: () => call('load', { coreURL: FF_URLS.core, wasmURL: FF_URLS.wasm }),
+        writeFile: (path, u8) => call('write', { path, data: u8 }, [u8.buffer]),
+        exec: (args) => call('exec', { args }),
+        readFile: (path) => call('read', { path }),
+        deleteFile: (path) => call('delete', { path })
+    };
+
+    function call(type, data, transfer) {
+        return new Promise((resolve, reject) => {
+            const id = nextId++;
+            pending[id] = { resolve, reject };
+            worker.postMessage({ id, type, data }, transfer || []);
+        });
+    }
+
+    worker.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === 'log') { logs.push(m.msg); if (logs.length > 60) logs.shift(); return; }
+        if (m.type === 'progress') { if (api.onprogress) api.onprogress(m.progress); return; }
+        const pr = pending[m.id];
+        if (!pr) return;
+        delete pending[m.id];
+        if (m.error) pr.reject(new Error(m.error)); else pr.resolve(m.result);
+    };
+    worker.onerror = (e) => {
+        rejectAll('Encoder worker failed: ' + (e && e.message ? e.message : 'could not load the encoder (check your connection)'));
+    };
+    return api;
+}
+
+function loadFFmpeg() {
+    if (ffmpegInstance) return Promise.resolve(ffmpegInstance);
+    if (ffmpegLoading) return ffmpegLoading;
+    ffmpegLoading = (async () => {
+        const ff = createFFmpegWorker();
+        ff.onprogress = (pr) => { if (ffmpegProgressCb) ffmpegProgressCb(pr); };
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Encoder took too long to load (check your connection)')), 120000));
+        try {
+            await Promise.race([ff.load(), timeout]);
+        } catch (err) {
+            ff.terminate();
+            throw err;
+        }
+        ffmpegInstance = ff;
+        return ff;
+    })();
+    ffmpegLoading.catch(() => { ffmpegLoading = null; });
+    return ffmpegLoading;
+}
+
+
+function stopExport() {
+  TR.cancelled = true;
+  try { if (TR.recorder && TR.recorder.state !== 'inactive') TR.recorder.stop(); } catch (e) {}
+  try { TE.video.pause(); } catch (e) {}
+  if (ffmpegInstance) { try { ffmpegInstance.terminate(); } catch (e) {} ffmpegInstance = null; ffmpegLoading = null; }
+}
+function pickMp4RecorderMime() {
+  if (!window.MediaRecorder) return '';
+  const cands = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1.4D401E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/mp4'];
+  for (const c of cands) if (MediaRecorder.isTypeSupported(c)) return c;
+  return '';
+}
+function seekTo(video, tm) {
+  return new Promise((resolve) => {
+    if (Math.abs(video.currentTime - tm) < 0.01) return resolve();
+    const done = () => { video.removeEventListener('seeked', done); resolve(); };
+    video.addEventListener('seeked', done); video.currentTime = tm;
+  });
+}
+async function exportViaRecorder(mime) {
+  const video = TE.video; const capture = video.captureStream || video.mozCaptureStream;
+  const start = TR.start, end = TR.end, clipLen = end - start;
+  video.pause(); await seekTo(video, start);
+  const stream = capture.call(video);
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 });
+  TR.recorder = recorder; const chunks = [];
+  recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  const finished = new Promise((resolve) => { recorder.onstop = resolve; });
+  recorder.start(250); await video.play();
+  await new Promise((resolve) => {
+    const timer = setInterval(() => {
+      if (TR.cancelled) { clearInterval(timer); return resolve(); }
+      const cur = video.currentTime; const pct = Math.min(100, Math.max(0, (cur - start) / clipLen * 100));
+      TE.exportBar.style.width = pct + '%'; TE.exportText.textContent = `${t('recording')} ${Math.round(pct)}%`;
+      if (cur >= end - 0.03 || video.ended) { clearInterval(timer); resolve(); }
+    }, 100);
+  });
+  video.pause(); if (recorder.state !== 'inactive') recorder.stop(); await finished;
+  stream.getTracks().forEach(tr => tr.stop()); TR.recorder = null;
+  if (TR.cancelled) return null;
+  const out = new Blob(chunks, { type: 'video/mp4' });
+  if (out.size < 1024) throw new Error('Recorded clip was empty');
+  return out;
+}
+async function exportViaFFmpeg() {
+  const start = TR.start, end = TR.end, clipLen = end - start;
+  TE.exportText.textContent = ffmpegInstance ? t('preparing') : t('loadEngine');
+  const ff = await loadFFmpeg(); const inName = 'in.' + (TR.ext || 'mp4');
+  try {
+    await ff.writeFile(inName, new Uint8Array(await TR.blob.arrayBuffer()));
+    ffmpegProgressCb = (pr) => { const pct = Math.min(100, Math.max(0, Math.round(pr * 100))); TE.exportBar.style.width = pct + '%'; TE.exportText.textContent = `${t('encoding')} ${pct}%`; };
+    TE.exportText.textContent = `${t('encoding')} 0%`;
+    const code = await ff.exec(['-ss', String(start), '-i', inName, '-t', String(clipLen), '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', 'out.mp4']);
+    if (code !== 0) throw new Error('Encoder exited with code ' + code + '. ' + ff.lastLog());
+    const out = await ff.readFile('out.mp4');
+    if (!out || out.length < 1024) throw new Error('Encoded clip was empty');
+    return new Blob([out], { type: 'video/mp4' });
+  } finally { ffmpegProgressCb = null; try { await ff.deleteFile(inName); await ff.deleteFile('out.mp4'); } catch (e) {} }
+}
+async function exportTrimmedClip() {
+  if (TR.exporting || !TR.duration || !TR.blob) return;
+  const start = TR.start, end = TR.end;
+  TR.exporting = true; TR.cancelled = false; TR.previewing = false; TE.video.pause();
+  TE.saveBtn.disabled = true; TE.saveText.textContent = t('working');
+  TE.exportWrap.classList.remove('hidden'); TE.exportBar.style.width = '0%'; TE.exportText.textContent = t('starting');
+  try {
+    const canCapture = !!(TE.video.captureStream || TE.video.mozCaptureStream);
+    const mime = (!TR.usedPreview && canCapture) ? pickMp4RecorderMime() : '';
+    const out = mime ? await exportViaRecorder(mime) : await exportViaFFmpeg();
+    if (out && !TR.cancelled) {
+      const tag = (x) => fmtTime(x).replace(/[:.]/g, '-');
+      saveBlob(out, `komorebi-x-clip-${tag(start)}_${tag(end)}.mp4`);
+      TE.exportBar.style.width = '100%'; TE.exportText.textContent = t('done'); toast(t('trimSaved'));
+    }
+  } catch (err) {
+    console.error(err);
+    toast(`${t('exportFail')} ${err.message || ''}`); TE.exportText.textContent = `${t('exportFail')} ${err.message || ''}`;
+  } finally {
+    TR.exporting = false; TR.recorder = null; TE.saveBtn.disabled = false; TE.saveText.textContent = t('saveClip');
+    setTimeout(() => TE.exportWrap.classList.add('hidden'), 3000);
+  }
+}
+TE.saveBtn.addEventListener('click', exportTrimmedClip);
+
+/* ---------- original silk-lines top bar ---------- */
+        (function initSilk() {
+            const host = document.getElementById('wave-hero');
+            const cv = document.getElementById('aurora-canvas');
+            if (!host || !cv) return;
+            const ctx = cv.getContext('2d');
+            const LINES = 28, STEP = 8;
+            const S = {};
+            function readSilk() {
+                const cs = getComputedStyle(document.documentElement);
+                ['1','2','3','hi','hi2'].forEach(k => S[k] = cs.getPropertyValue('--silk-' + k).trim());
+            }
+            readSilk();
+            new MutationObserver(readSilk).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+            let W = 0, H = 0, dpr = 1;
+            const m = { x: -999, y: 0, tx: -999, ty: 0, amt: 0, press: 0, down: false, vx: 0, vy: 0 };
+            const pulses = [];
+            let energy = 0, lastX = null, lastY = null;
+            host.style.cursor = 'grab'; host.style.touchAction = 'pan-y'; host.style.userSelect = 'none';
+
+            function resize() {
+                const r = host.getBoundingClientRect();
+                dpr = Math.min(window.devicePixelRatio || 1, 2);
+                W = r.width; H = r.height;
+                cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            host.addEventListener('pointermove', (e) => {
+                const r = host.getBoundingClientRect();
+                m.tx = e.clientX - r.left; m.ty = e.clientY - r.top;
+                if (m.amt < 0.05) { m.x = m.tx; m.y = m.ty; }
+                m.hover = true;
+                if (lastX !== null) energy = Math.min(1, energy + Math.hypot(e.clientX - lastX, e.clientY - lastY) / 700);
+                if (lastX !== null && m.down) {
+                    m.vx = Math.max(-40, Math.min(40, m.vx + (e.clientX - lastX) * 0.5));
+                    m.vy = Math.max(-40, Math.min(40, m.vy + (e.clientY - lastY) * 0.5));
+                    energy = Math.min(1.5, energy + 0.02);
+                }
+                lastX = e.clientX; lastY = e.clientY;
+            }, { passive: true });
+            host.addEventListener('pointerdown', (e) => {
+                const r = host.getBoundingClientRect();
+                m.tx = e.clientX - r.left; m.ty = e.clientY - r.top;
+                m.x = m.tx; m.y = m.ty; m.hover = true; m.down = true;
+                pulses.push({ x: m.tx, y: m.ty, age: 0 });
+                host.style.cursor = 'grabbing';
+                try { host.setPointerCapture(e.pointerId); } catch (_) {}
+            });
+            const release = () => { m.down = false; host.style.cursor = 'grab'; };
+            host.addEventListener('pointerup', release);
+            host.addEventListener('pointercancel', release);
+            host.addEventListener('pointerleave', () => { if (!m.down) { m.hover = false; lastX = lastY = null; } });
+
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            let t = reduce ? 2 : 0, last = performance.now();
+            let active = true, raf = 0;
+
+            function frame(now) {
+                if (!active) { raf = 0; return; }
+                const dt = Math.min(0.05, (now - last) / 1000); last = now;
+                energy *= 0.97;
+                m.press += ((m.down ? 1 : 0) - m.press) * 0.08;
+                m.vx *= 0.92; m.vy *= 0.92;
+                for (let p = pulses.length - 1; p >= 0; p--) { pulses[p].age += dt; if (pulses[p].age > 2.2) pulses.splice(p, 1); }
+                m.amt += ((m.hover ? 1 : 0) - m.amt) * 0.06;
+                const follow = m.down ? 0.16 : 0.08;
+                m.x += (m.tx - m.x) * follow; m.y += (m.ty - m.y) * follow;
+                t += dt * (0.35 + 0.35 * m.amt + 0.4 * energy + 0.35 * m.press);
+
+                ctx.clearRect(0, 0, W, H);
+                const padY = H * 0.14, gap = (H - padY * 2) / (LINES - 1);
+                const grow = 1 + 0.5 * m.press;
+                const sx = Math.max(120, W * 0.12) * grow, sy = H * 0.45 * (1 + 0.35 * m.press);
+                const lines = [];
+
+                for (let i = 0; i < LINES; i++) {
+                    const y0 = padY + i * gap;
+                    const pts = [];
+                    for (let x = 0; x <= W + STEP; x += STEP) {
+                        const k = x / W;
+                        let y = y0
+                            + (H * 0.07) * Math.sin(k * 5.2 + t * 0.9 + i * 0.22)
+                            + (H * 0.04) * Math.sin(k * 11 - t * 1.2 + i * 0.4);
+                        const dx = x - m.x, dy = y0 - m.y;
+                        const f = Math.exp(-(dx * dx) / (2 * sx * sx) - (dy * dy) / (2 * sy * sy)) * m.amt;
+                        y += (m.y - y0) * (0.55 + 0.3 * m.press) * f;      // lines gather toward cursor
+                        y += Math.sin(x * 0.045 - t * 3 + i * 0.3) * (4 + 6 * m.press) * f * (0.5 + energy); // ripple
+                        y += m.vy * 0.5 * f + Math.sin(x * 0.02 + i * 0.5) * m.vx * 0.12 * f; // drag swirl
+                        for (const p of pulses) {                         // click shockwave
+                            const d = Math.hypot(x - p.x, y0 - p.y);
+                            const env = Math.exp(-p.age * 1.4) * Math.exp(-d / (W * 0.3));
+                            y += Math.sin(d * 0.06 - p.age * 7) * 14 * env;
+                        }
+                        pts.push(x, y);
+                    }
+                    lines.push(pts);
+                }
+
+                // base lines
+                const base = ctx.createLinearGradient(0, 0, W, 0);
+                base.addColorStop(0, `rgba(${S[1]},0)`);
+                base.addColorStop(0.2, `rgba(${S[1]},0.75)`);
+                base.addColorStop(0.55, `rgba(${S[2]},0.7)`);
+                base.addColorStop(0.85, `rgba(${S[3]},0.6)`);
+                base.addColorStop(1, `rgba(${S[3]},0)`);
+                ctx.strokeStyle = base; ctx.lineWidth = 1; ctx.lineJoin = 'round';
+                const draw = () => {
+                    for (const pts of lines) {
+                        ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+                        for (let j = 2; j < pts.length; j += 2) ctx.lineTo(pts[j], pts[j + 1]);
+                        ctx.stroke();
+                    }
+                };
+                draw();
+
+                // highlight lens around the cursor
+                if (m.amt > 0.01) {
+                    const R = Math.max(110, W * 0.13) * (1 + 0.5 * m.press);
+                    const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, R);
+                    g.addColorStop(0, `rgba(${S.hi},${0.9 * m.amt})`);
+                    g.addColorStop(0.5, `rgba(${S.hi2},${0.6 * m.amt})`);
+                    g.addColorStop(1, `rgba(${S.hi2},0)`);
+                    ctx.strokeStyle = g; ctx.lineWidth = 1.4 + 0.8 * m.press;
+                    draw();
+                }
+
+                if (!reduce) raf = requestAnimationFrame(frame); else raf = 0;
+            }
+            raf = requestAnimationFrame(frame);
+            let onScreen = true;
+            const setActive = () => {
+                const v = onScreen && !document.hidden;
+                if (v && !active) { active = true; last = performance.now(); if (!raf && !reduce) raf = requestAnimationFrame(frame); }
+                else if (!v) active = false;
+            };
+            if ('IntersectionObserver' in window) new IntersectionObserver((en) => { onScreen = en[0].isIntersecting; setActive(); }).observe(host);
+            document.addEventListener('visibilitychange', setActive);
+        })();
+
+/* ---------- boot ---------- */
+applyLang(); syncInput();
+const qp = new URLSearchParams(location.search).get('q');
+if (qp) { setValue(qp, false); search(qp); }
+})();
+</script>
+</body>
+</html>
