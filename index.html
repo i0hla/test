@@ -220,21 +220,23 @@
         <p>Control My Account &copy; 2026 - Realtime Public Accounts & Connection Manager</p>
     </footer>
 
-    <!-- Firebase SDKs and Logic -->
+    <!-- Firebase SDKs and Logic with Your Real Config -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global Configuration Variables
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'control-my-account-default';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyDummyKeyForLocalTestingModeOnly",
-            authDomain: "dummy.firebaseapp.com",
-            projectId: "dummy-project",
-            storageBucket: "dummy.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456:web:dummy"
+        
+        // Your actual Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXzu_xUN-Yub397YWc-IwjcYsw19-7BDI",
+            authDomain: "controlmyaccount.firebaseapp.com",
+            projectId: "controlmyaccount",
+            storageBucket: "controlmyaccount.firebasestorage.app",
+            messagingSenderId: "524316707507",
+            appId: "1:524316707507:web:21a8e11a63caa60fa53ec6",
+            measurementId: "G-4QRWJM7Y5L"
         };
 
         let db, auth, currentUser = null;
@@ -270,16 +272,10 @@
             });
 
         } catch (e) {
-            console.warn("Firebase initialization warning. Running local preview mode.", e);
-            document.getElementById('loadingState').innerHTML = `
-                <div class="text-amber-400 bg-amber-500/10 p-4 rounded-xl border border-amber-500/20 inline-block text-sm">
-                    <i class="fa-solid fa-triangle-exclamation mb-1 text-lg"></i>
-                    <p>Running in offline preview mode. Live cloud sync requires active cloud environment.</p>
-                </div>
-            `;
+            console.warn("Firebase initialization warning.", e);
         }
 
-        // Setup Firestore Realtime Listener following rules (RULE 1 & RULE 2 & RULE 3)
+        // Setup Firestore Realtime Listener
         function setupRealtimeListener() {
             if (!db || !currentUser) return;
             
@@ -305,7 +301,6 @@
                 renderPosts();
             }, (error) => {
                 console.error("Error fetching live posts:", error);
-                showModal("Connection Error", "Failed to fetch live posts. Please refresh the page.", "error");
             });
         }
 
@@ -432,7 +427,6 @@
                     const postsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'account_posts');
                     await addDoc(postsCollectionRef, newPostData);
                 } else {
-                    // Fallback local append
                     allPosts.unshift({ id: 'local_' + Date.now(), ...newPostData });
                     renderPosts();
                 }
@@ -539,7 +533,6 @@
         };
 
         window.showModal = function(title, message, type = 'success') {
-            document.getElementById('modalTitleinnerText').innerText = title;
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalMessage').innerText = message;
             const iconEl = document.getElementById('modalIcon');
